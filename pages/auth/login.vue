@@ -14,7 +14,7 @@ const handleLogin = async () => {
     await login(email.value, password.value);
     if (!error.value) {
       console.log('Logged in');
-      router.push('/dashboard');
+      router.push('/');
     } else {
       console.error('Login failed:', error.value);
       alert('Login failed: ' + error.value);

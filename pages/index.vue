@@ -1,22 +1,40 @@
-<script setup>
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue'
+import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'vue-router'
-import { onAuthStateChanged, getAuth } from 'firebase/auth'
-import { ref, onMounted } from 'vue'
+import { useProducts } from '~/composables/useProducts'
+import { useCategories } from '~/composables/useCategories'
+import { useCart } from '~/composables/useCart'
+import type { Product } from '~/types/Product'
+import type { Category } from '~/types/Category'
+
+const { getProducts } = useProducts()
+const { getCategories } = useCategories()
+const { addToCart } = useCart()
+
+const { data: products, pending: loading, refresh } = await useAsyncData<Product[]>('products', () => getProducts())
+const { data: categories, pending: loadingCategories } = await useAsyncData<Category[]>('categories', () => getCategories())
+
+const categoryMap = computed(() => {
+  const map: Record<string, string> = {}
+  categories.value?.forEach(category => {
+    map[category.id] = category.name
+  })
+  return map
+})
 
 const router = useRouter()
 const isLoggedIn = ref(false)
 const isAuthReady = ref(false)
 
-const navigateToLogin = () => {
-  router.push('/auth/login')
-}
-
-const navigateToRegister = () => {
-  router.push('/auth/register')
-}
-
-const navigateToDashboard = () => {
-  router.push('/dashboard')
+const handleAddToCart = async (productId: string) => {
+  try {
+    await addToCart(productId, 1)
+    alert('Added to cart!')
+  } catch (error) {
+    console.error('Failed to add to cart:', error)
+    alert('You must be logged in to add items to cart.')
+  }
 }
 
 onMounted(() => {
@@ -29,36 +47,83 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-screen bg-gradient-to-r from-blue-500 to-indigo-600 text-white flex justify-center items-center">
-    <div class="text-center p-8">
-      <h1 class="text-4xl font-bold mb-4">Welcome to Ajaxtreon</h1>
-      <p class="text-xl mb-6">Your all-in-one platform for managing your business and tasks efficiently.</p>
-
-      <!-- Render buttons only after auth check is ready -->
-      <div v-if="isAuthReady" class="space-x-4">
-        <button
-          v-if="isLoggedIn"
-          @click="navigateToDashboard"
-          class="bg-blue-800 text-white py-2 px-6 rounded-lg shadow-md hover:bg-blue-900 transition"
-        >
-          Go to Dashboard
-        </button>
-
-        <template v-else>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white py-20 px-6">
+      <div class="max-w-7xl mx-auto text-center">
+        <h1 class="text-5xl font-extrabold mb-4">🛒 Ajaxtreon Store</h1>
+        <p class="text-xl text-blue-100 mb-8">Find and manage your business inventory with ease.</p>
+        <div v-if="isAuthReady" class="flex justify-center gap-4 flex-wrap">
           <button
-            @click="navigateToLogin"
-            class="bg-blue-700 text-white py-2 px-6 rounded-lg shadow-md hover:bg-blue-600 transition"
+            v-if="isLoggedIn"
+            @click="router.push('/orders')"
+            class="bg-white text-blue-700 font-semibold py-2 px-6 rounded-full hover:bg-blue-100 transition"
           >
-            Login
+            My Orders
           </button>
-          <button
-            @click="navigateToRegister"
-            class="bg-transparent border-2 border-white text-white py-2 px-6 rounded-lg shadow-md hover:bg-white hover:text-gray-900 transition"
-          >
-            Register
-          </button>
-        </template>
+          <template v-else>
+            <button
+              @click="router.push('/auth/login')"
+              class="bg-white text-blue-700 font-semibold py-2 px-6 rounded-full hover:bg-blue-100 transition"
+            >
+              Login
+            </button>
+            <button
+              @click="router.push('/auth/register')"
+              class="border-2 border-white text-white font-semibold py-2 px-6 rounded-full hover:bg-white hover:text-blue-700 transition"
+            >
+              Register
+            </button>
+          </template>
+        </div>
       </div>
-    </div>
+    </section>
+
+    <!-- Product Section -->
+    <section class="max-w-7xl mx-auto py-16 px-6">
+      <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">🧾 Featured Products</h2>
+
+      <div v-if="loading" class="text-center text-gray-500 py-10">Loading products...</div>
+
+      <div v-else class="grid gap-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div
+          v-for="product in products"
+          :key="product.id"
+          class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition relative"
+        >
+          <div class="h-48 bg-gray-100 overflow-hidden">
+            <img
+              :src="product.imageUrl"
+              :alt="product.name"
+              class="w-full h-full object-cover"
+            />
+          </div>
+          <div class="p-5">
+            <h3 class="text-lg font-semibold text-gray-800 mb-1 truncate">
+              {{ product.name }}
+            </h3>
+            <p class="text-sm text-gray-500 mb-1">
+              {{ categoryMap[product.categoryId] || 'Uncategorized' }}
+            </p>
+            <p class="text-sm text-gray-600 mb-2 truncate">
+              {{ product.description || 'No description available.' }}
+            </p>
+            <p class="text-blue-600 font-bold text-lg mb-2">Rp {{ product.price?.toLocaleString() }}</p>
+
+            <div v-if="product.stock <= 0" class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+              Out of Stock
+            </div>
+
+            <button
+              :disabled="product.stock <= 0"
+              @click="handleAddToCart(product.id)"
+              class="mt-2 w-full bg-blue-600 text-white py-2 rounded-full hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {{ product.stock > 0 ? 'Add to Cart' : 'Out of Stock' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </template>

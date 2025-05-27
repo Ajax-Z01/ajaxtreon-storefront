@@ -7,14 +7,14 @@ const email = ref('')
 const password = ref('')
 const name = ref('')
 const router = useRouter()
-const { register, registerError, loading } = useRegister()
+const { registerCustomer, registerError, loading } = useRegister()
 
 const handleRegister = async () => {
   if (loading.value) return
   try {
-    await register(email.value, password.value, name.value)
+    await registerCustomer(email.value, password.value, name.value)
     console.log('Registered successfully')
-    router.push('/dashboard')
+    router.push('/')
   } catch (e) {
     console.error('Registration failed', registerError.value)
     alert('Registration failed: ' + registerError.value)
