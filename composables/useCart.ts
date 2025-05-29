@@ -121,6 +121,8 @@ export const useCart = () => {
 
       const deletePromises = cartSnap.docs.map(docSnap => deleteDoc(docSnap.ref))
       await Promise.all(deletePromises)
+      
+      cartItemsState.value = []
     } catch (error) {
       console.error('Error clearing cart:', error)
       throw createError({ statusCode: 500, message: 'Failed to clear cart' })
@@ -134,24 +136,29 @@ export const useCart = () => {
       .then(user => {
         const cartRef = collection($db, 'carts', user.uid, 'items')
         unsubscribe = onSnapshot(cartRef, async (cartSnap) => {
-          const cartItems = cartSnap.docs.map(doc => doc.data() as CartItem)
+                if (cartSnap.empty) {
+          callback([])
+          return
+        }
 
-          const productRefs = cartItems.map(item => doc($db, 'products', item.productId))
-          const productSnaps = await Promise.all(productRefs.map(ref => getDoc(ref)))
+        const cartItems = cartSnap.docs.map(doc => doc.data() as CartItem)
 
-          const populatedCart: PopulatedCartItem[] = []
-          productSnaps.forEach((snap, i) => {
-            if (snap.exists()) {
-              const productData = snap.data() as Product
-              populatedCart.push({
-                product: {
-                  ...productData,
-                  id: snap.id,
-                },
-                quantity: cartItems[i].quantity,
-              })
-            }
-          })
+        const productRefs = cartItems.map(item => doc($db, 'products', item.productId))
+        const productSnaps = await Promise.all(productRefs.map(ref => getDoc(ref)))
+
+        const populatedCart: PopulatedCartItem[] = []
+        productSnaps.forEach((snap, i) => {
+          if (snap.exists()) {
+            const productData = snap.data() as Product
+            populatedCart.push({
+              product: {
+                ...productData,
+                id: snap.id,
+              },
+              quantity: cartItems[i].quantity,
+            })
+          }
+        })
 
           callback(populatedCart)
         })

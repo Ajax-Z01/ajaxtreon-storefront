@@ -63,14 +63,6 @@ const logoutUser = async () => {
 
         <template v-else>
           <NuxtLink
-            to="/user"
-            class="hover:text-blue-600 transition"
-            :class="{ 'text-blue-700 font-semibold': route.path.startsWith('/user') }"
-          >
-            Users
-          </NuxtLink>
-
-          <NuxtLink
             to="/profile"
             class="flex items-center gap-2 hover:text-blue-600 transition"
           >
@@ -108,12 +100,6 @@ const logoutUser = async () => {
         </NuxtLink>
       </template>
       <template v-else>
-        <NuxtLink to="/dashboard" class="block hover:text-blue-600" @click="showMobileMenu = false">
-          Dashboard
-        </NuxtLink>
-        <NuxtLink to="/user" class="block hover:text-blue-600" @click="showMobileMenu = false">
-          Users
-        </NuxtLink>
         <NuxtLink to="/profile" class="block hover:text-blue-600" @click="showMobileMenu = false">
           My Account
         </NuxtLink>

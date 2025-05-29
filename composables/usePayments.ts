@@ -1,4 +1,4 @@
-import type { Payment, PaymentData } from '~/types/Payment'
+import type { Payment, PaymentData, PaymentStatus, CreatePaymentResponse, UpdateStatusResponse } from '~/types/Payment'
 
 export const usePayment = () => {
   const baseUrl = useRuntimeConfig().public.apiBaseUrl
@@ -7,6 +7,10 @@ export const usePayment = () => {
   const getHeaders = () => {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+    }
+    
+    if (!authToken.value) {
+      throw createError({ statusCode: 401, message: 'Unauthorized' });
     }
 
     if (authToken.value) {
@@ -17,18 +21,18 @@ export const usePayment = () => {
   }
 
   // Create payment
-  const createPayment = async (paymentData: PaymentData): Promise<Payment | void> => {
-    const { data, error } = await useFetch<Payment>(`${baseUrl}/payment`, {
+  const createPayment = async (paymentData: PaymentData): Promise<CreatePaymentResponse> => {
+    const { data, error } = await useFetch<CreatePaymentResponse>(`${baseUrl}/payment`, {
       method: 'POST',
       body: JSON.stringify(paymentData),
       headers: getHeaders(),
-    })
+    });
 
     if (error.value) {
-      throw createError({ statusCode: 500, message: 'Error creating payment' })
+      throw createError({ statusCode: 500, message: 'Error creating payment' });
     }
 
-    return data.value || undefined
+    return data.value!;
   }
 
   // Get all payments
@@ -60,19 +64,19 @@ export const usePayment = () => {
   }
 
   // Update payment status
-  const updatePaymentStatus = async (id: string, status: string): Promise<Payment | void> => {
-    const { data, error } = await useFetch<Payment>(`${baseUrl}/payment/${id}/status`, {
+  const updatePaymentStatus = async (id: string, status: PaymentStatus): Promise<UpdateStatusResponse> => {
+    const { data, error } = await useFetch<UpdateStatusResponse>(`${baseUrl}/payment/${id}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status }),
       headers: getHeaders(),
-    })
+    });
 
     if (error.value) {
-      throw createError({ statusCode: 500, message: 'Error updating payment status' })
+      throw createError({ statusCode: 500, message: 'Error updating payment status' });
     }
 
-    return data.value || undefined
-  }
+    return data.value!;
+  };
 
   // Delete payment
   const deletePayment = async (id: string): Promise<void> => {

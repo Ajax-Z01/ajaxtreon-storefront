@@ -16,3 +16,10 @@ export interface PaymentData {
     method: string;
 }
   
+export type CreatePaymentResponse = {
+  message: string;
+  paymentId: string;
+  midtransResult: any;
+};
+
+export type UpdateStatusResponse = { message: string };

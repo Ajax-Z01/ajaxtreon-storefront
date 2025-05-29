@@ -29,6 +29,19 @@ export const useProducts = () => {
 
     return data.value || []
   }
+  
+  const getProductById = async (id: string): Promise<Product> => {
+    const { data, error } = await useFetch<Product>(`${baseUrl}/inventory/product/${id}`, {
+      method: 'GET',
+      headers: getHeaders(),
+    })
+
+    if (error.value) {
+      throw createError({ statusCode: 404, message: 'Product not found' })
+    }
+
+    return data.value as Product
+  }
 
   const addProduct = async (product: CreateProductPayload): Promise<string> => {
     const { data, error } = await useFetch<{ id: string }>(`${baseUrl}/inventory/product`, {
@@ -69,6 +82,7 @@ export const useProducts = () => {
 
   return {
     getProducts,
+    getProductById,
     addProduct,
     updateProduct,
     deleteProduct

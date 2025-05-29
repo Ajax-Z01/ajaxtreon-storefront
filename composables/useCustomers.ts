@@ -81,6 +81,26 @@ export const useCustomers = () => {
       throw createError({ statusCode: 500, message: 'Failed to fetch customer' })
     }
   }
+  
+  const getCustomerByFirebaseUid = async (firebaseUid: string): Promise<Customer | null> => {
+    try {
+      await ensureToken()
+
+      const { data, error } = await useFetch<Customer>(`${baseUrl}/customer/firebase/${firebaseUid}`, {
+        method: 'GET',
+        headers: getHeaders(),
+      })
+
+      if (error.value) {
+        throw createError({ statusCode: 500, message: 'Failed to fetch customer by Firebase UID' })
+      }
+
+      return data.value || null
+    } catch (err) {
+      console.error('Error fetching customer by Firebase UID:', err)
+      throw createError({ statusCode: 500, message: 'Failed to fetch customer by Firebase UID' })
+    }
+  }
 
   const createCustomer = async (customerData: CustomerCreateInput): Promise<Customer> => {
     try {
@@ -146,6 +166,7 @@ export const useCustomers = () => {
     ensureToken,
     getCustomers,
     getCustomerById,
+    getCustomerByFirebaseUid,
     createCustomer,
     updateCustomer,
     deleteCustomer,

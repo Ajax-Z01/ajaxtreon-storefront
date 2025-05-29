@@ -14,7 +14,7 @@ const handleRegister = async () => {
   try {
     await registerCustomer(email.value, password.value, name.value)
     console.log('Registered successfully')
-    router.push('/')
+    router.push('/auth/login')
   } catch (e) {
     console.error('Registration failed', registerError.value)
     alert('Registration failed: ' + registerError.value)
