@@ -1,4 +1,4 @@
-import type { Order, CreateOrderPayload, UpdateOrderPayload } from '~/types/Order'
+import type { Order, CreateOrderPayload, AddOrderResponse } from '~/types/Order'
 
 export const useOrders = () => {
   const baseUrl = useRuntimeConfig().public.apiBaseUrl
@@ -27,48 +27,37 @@ export const useOrders = () => {
     return data.value || []
   }
 
-const addOrder = async (order: CreateOrderPayload): Promise<string> => {
-  const { data, error, status } = await useFetch<{ id: string }>(`${baseUrl}/order`, {
-    method: 'POST',
-    body: JSON.stringify(order),
-    headers: getHeaders(),
-  });
+  const addOrder = async (order: CreateOrderPayload): Promise<AddOrderResponse> => {
+    const { data, error, status } = await useFetch<AddOrderResponse>(`${baseUrl}/order`, {
+      method: 'POST',
+      body: JSON.stringify(order),
+      headers: getHeaders(),
+    });
 
-  if (error.value) {
-    const message = error.value?.data?.message || 'Failed to add order';
-    throw createError({ statusCode: Number(status.value) || 500, message });
+    if (error.value) {
+      const message = error.value?.data?.message || 'Failed to add order';
+      throw createError({ statusCode: Number(status.value) || 500, message });
+    }
+
+    return data.value!
   }
-
-  return data.value?.id || '';
-};
-
-  const updateOrder = async (id: string, update: UpdateOrderPayload): Promise<void> => {
-    const { error } = await useFetch(`${baseUrl}/order/${id}`, {
-      method: 'PUT',
-      body: update,
+  
+  const getOrdersByCustomer = async (customerId: string): Promise<Order[]> => {
+    const { data, error } = await useFetch<Order[]>(`${baseUrl}/order?customerId=${customerId}`, {
+      method: 'GET',
       headers: getHeaders(),
     })
 
     if (error.value) {
-      throw createError({ statusCode: 500, message: 'Failed to update order' })
+      throw createError({ statusCode: 500, message: 'Failed to fetch customer orders' })
     }
-  }
 
-  const deleteOrder = async (id: string): Promise<void> => {
-    const { error } = await useFetch(`${baseUrl}/order/${id}`, {
-      method: 'DELETE',
-      headers: getHeaders(),
-    })
-
-    if (error.value) {
-      throw createError({ statusCode: 500, message: 'Failed to delete order' })
-    }
+    return data.value || []
   }
 
   return {
     getOrders,
     addOrder,
-    updateOrder,
-    deleteOrder,
+    getOrdersByCustomer,
   }
 }

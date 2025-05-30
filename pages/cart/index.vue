@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useCart } from '~/composables/useCart'
+import { useOrders } from '~/composables/useOrders'
+import type { CreateOrderPayload, ItemDetails } from '~/types/Order'
 import CartItem from '~/components/CartItem.vue'
+import { useCustomers } from '~/composables/useCustomers'
+import { getCurrentUserWithToken } from '~/composables/getCurrentUser'
+import type { Customer } from '~/types/Customer'
 
+const { getCustomerByFirebaseUid, ensureToken } = useCustomers()
+const { addOrder } = useOrders()
 const {
   cartItemsState,
   updateCartItem,
@@ -11,7 +18,27 @@ const {
   subscribeCartItems
 } = useCart()
 
+
+const customer = ref<Customer | null>(null)
+const isCartReady = ref(false)
 const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    await ensureToken()
+    const { user } = await getCurrentUserWithToken()
+    if (!user || !user.uid) throw new Error('User is not authenticated')
+
+    const customerData = await getCustomerByFirebaseUid(user.uid)
+    if (!customerData) throw new Error('Customer not found')
+
+    customer.value = customerData
+    isCartReady.value = true
+  } catch (err) {
+    console.error('Gagal mengambil data customer:', err)
+    alert('Gagal mengambil data customer. Silakan login ulang.')
+  }
+})
 
 onMounted(() => {
   const unsubscribe = subscribeCartItems((items) => {
@@ -65,8 +92,65 @@ const formatPrice = (value: number) =>
     currency: 'IDR',
   }).format(value)
 
-const checkout = () => {
-  console.log('Checkout with items:', cartItems.value)
+const checkout = async () => {
+  if (cartItems.value.length === 0) {
+    alert('Keranjang kosong.')
+    return
+  }
+
+  if (!customer.value) {
+    alert('Data pelanggan belum tersedia.')
+    return
+  }
+
+  const customerId = customer.value?.id
+
+  if (!customerId) {
+    alert('Customer ID tidak tersedia')
+    return
+  }
+
+  try {
+    const orderItems: ItemDetails[] = cartItems.value.map((item) => ({
+      id: item.product?.id ?? '',
+      name: item.product?.name ?? '',
+      price: item.product?.price ?? 0,
+      quantity: item.quantity,
+    }))
+
+    const payload: CreateOrderPayload = {
+      customerId: customerId,
+      createdBy: customerId,
+      items: orderItems,
+      discount: 0,
+      tax: 0,
+      paymentMethod: 'bank_transfer',
+      status: 'pending',
+      refundAmount: 0,
+      customer: {
+        first_name: customer.value.name ?? '',
+        last_name: '',
+        email: customer.value.email ?? '',
+        phone: customer.value.phone ?? '',
+      }
+    }
+
+    console.log('Creating order with payload:', payload)
+
+    const result = await addOrder(payload)
+
+    if (result?.paymentInfo?.redirect_url) {
+      window.location.href = result.paymentInfo.redirect_url
+    } else {
+      alert('Pesanan berhasil dibuat, tetapi tidak ada link pembayaran.')
+      console.log('Payment Info:', result.paymentInfo)
+    }
+
+    clearCart()
+  } catch (err: any) {
+    console.error('Gagal membuat pesanan:', err)
+    alert(err.message || 'Gagal membuat pesanan.')
+  }
 }
 </script>
 
@@ -74,7 +158,7 @@ const checkout = () => {
   <div class="max-w-4xl mx-auto p-6">
     <h1 class="text-2xl font-bold mb-4">Shopping Cart</h1>
 
-    <div v-if="loading">Loading...</div>
+    <div v-if="!isCartReady">Loading customer data...</div>
     <div v-else-if="cartItems.length === 0">Your cart is empty.</div>
     <div v-else class="space-y-4">
       <CartItem

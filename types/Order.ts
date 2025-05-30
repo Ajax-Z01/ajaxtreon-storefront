@@ -1,3 +1,5 @@
+import type { MidtransCustomerDetails } from './Payment'
+
 export type OrderStatus = 'pending' | 'completed' | 'cancelled';
 
 export interface OrderItem {
@@ -29,21 +31,37 @@ export interface Order {
   createdBy?: string;
 }
 
+export interface AddOrderResponse {
+  orderId: string
+  paymentId: string
+  paymentInfo: {
+    redirect_url: string
+    [key: string]: any
+  }
+}
+
+export interface ItemDetails {
+  id: string;
+  price: number;
+  quantity: number;
+  name: string;
+}
+
 export interface CreateOrderPayload {
+  items: ItemDetails[];
   customerId: string;
-  items: OrderItem[];
-  totalAmount: number;
-  status?: OrderStatus;
+  createdBy: string;
+  customer: MidtransCustomerDetails;
+  paymentMethod?: string;
   discount?: number;
   tax?: number;
-  paymentMethod?: string;
   refundAmount?: number;
-  createdBy?: string;
+  status?: OrderStatus;
 }
 
 export interface UpdateOrderPayload {
   status?: OrderStatus;
-  items?: OrderItem[];
+  items?: ItemDetails[];
   totalAmount?: number;
   discount?: number;
   tax?: number;

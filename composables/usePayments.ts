@@ -1,20 +1,26 @@
-import type { Payment, PaymentData, PaymentStatus, CreatePaymentResponse, UpdateStatusResponse } from '~/types/Payment'
+import type { PaymentData, PaymentStatus, CreatePaymentResponse, UpdateStatusResponse } from '~/types/Payment'
 
 export const usePayment = () => {
   const baseUrl = useRuntimeConfig().public.apiBaseUrl
-  const authToken = useCookie<string | null>('authToken')
+  
+  const userToken = useState<string | null>('userToken', () => {
+    if (process.client) {
+      return localStorage.getItem('userToken')
+    }
+    return null
+  })
 
   const getHeaders = () => {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     }
     
-    if (!authToken.value) {
+    if (!userToken.value) {
       throw createError({ statusCode: 401, message: 'Unauthorized' });
     }
 
-    if (authToken.value) {
-      headers['Authorization'] = `Bearer ${authToken.value}`
+    if (userToken.value) {
+      headers['Authorization'] = `Bearer ${userToken.value}`
     }
 
     return headers
@@ -36,8 +42,8 @@ export const usePayment = () => {
   }
 
   // Get all payments
-  const getAllPayments = async (): Promise<Payment[]> => {
-    const { data, error } = await useFetch<Payment[]>(`${baseUrl}/payment`, {
+  const getAllPayments = async (): Promise<PaymentData[]> => {
+    const { data, error } = await useFetch<PaymentData[]>(`${baseUrl}/payment`, {
       method: 'GET',
       headers: getHeaders(),
     })
@@ -50,8 +56,8 @@ export const usePayment = () => {
   }
 
   // Get payment by ID
-  const getPaymentById = async (id: string): Promise<Payment | void> => {
-    const { data, error } = await useFetch<Payment>(`${baseUrl}/payment/${id}`, {
+  const getPaymentById = async (id: string): Promise<PaymentData | void> => {
+    const { data, error } = await useFetch<PaymentData>(`${baseUrl}/payment/${id}`, {
       method: 'GET',
       headers: getHeaders(),
     })
