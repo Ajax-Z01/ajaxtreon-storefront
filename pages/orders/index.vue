@@ -66,8 +66,25 @@ const calculateTotal = (order: Order): number => {
   return afterTax
 }
 
-const lanjutkanPembayaran = (paymentId: string) => {
-    console.log(`Lanjutkan pembayaran untuk Payment ID: ${paymentId}`)
+const continuePayment = (orderId: string) => {
+  console.log('Order ID clicked:', orderId)
+  console.log('Available payment keys:', Object.keys(paymentDetails.value))
+
+  const payment = paymentDetails.value[orderId]
+  console.log('Payment found:', payment)
+
+  if (!payment) {
+    alert('Data pembayaran tidak ditemukan.')
+    return
+  }
+
+  const redirectUrl = payment.redirectUrl
+
+  if (redirectUrl) {
+    window.open(redirectUrl, '_blank')
+  } else {
+    alert('Link pembayaran tidak tersedia.')
+  }
 }
 
 onMounted(async () => {
@@ -156,7 +173,7 @@ onMounted(async () => {
 
                     <button
                     v-if="paymentDetails[order.id]?.status !== 'paid'"
-                    @click="lanjutkanPembayaran(order.paymentId || '')"
+                    @click="continuePayment(order.id)"
                     class="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     >
                     Lanjutkan Pembayaran

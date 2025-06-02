@@ -90,7 +90,7 @@ const formatPrice = (value: number) =>
   new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
-  }).format(value)
+  }).format(value)  
 
 const checkout = async () => {
   if (cartItems.value.length === 0) {
@@ -140,13 +140,13 @@ const checkout = async () => {
     const result = await addOrder(payload)
 
     if (result?.paymentInfo?.redirect_url) {
-      window.location.href = result.paymentInfo.redirect_url
+      await clearCart()
+      window.open(result.paymentInfo.redirect_url, '_blank')
     } else {
       alert('Pesanan berhasil dibuat, tetapi tidak ada link pembayaran.')
       console.log('Payment Info:', result.paymentInfo)
     }
 
-    clearCart()
   } catch (err: any) {
     console.error('Gagal membuat pesanan:', err)
     alert(err.message || 'Gagal membuat pesanan.')
@@ -186,6 +186,13 @@ const checkout = async () => {
       >
         Proceed to Checkout
       </button>
+      
     </div>
+    <NuxtLink
+      to="/orders"
+      class="block text-center bg-gray-200 text-gray-800 px-6 py-3 mt-2 rounded-lg hover:bg-gray-300 w-full"
+    >
+      View My Orders
+    </NuxtLink>
   </div>
 </template>

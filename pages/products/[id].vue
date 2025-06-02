@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProducts } from '~/composables/useProducts'
 import { useCategories } from '~/composables/useCategories'
 import { useCart } from '~/composables/useCart'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import type { Product } from '~/types/Product'
+import type { Category } from '~/types/Category'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,50 +16,57 @@ const { getProductById } = useProducts()
 const { getCategories } = useCategories()
 const { addToCart } = useCart()
 
-const product = ref<Product | null>(null)
-const categoryMap = ref<Record<string, string>>({})
+// State untuk auth status
 const isLoggedIn = ref(false)
 const isAuthReady = ref(false)
-const loading = ref(true)
 
-const fetchProduct = async () => {
-  try {
-    const result = await getProductById(productId)
-    if (!result) {
-      alert('Product not found.')
-      router.push('/')
-      return
-    }
-    product.value = result
-  } catch (error) {
-    console.error('Error fetching product:', error)
-    router.push('/')
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(async () => {
-  const auth = getAuth()
-  onAuthStateChanged(auth, user => {
-    isLoggedIn.value = !!user
-    isAuthReady.value = true
-  })
-
-  const categories = await getCategories()
-  categoryMap.value = Object.fromEntries(categories.map(c => [c.id, c.name]))
-
-  await fetchProduct()
+// Setup Firebase Auth listener
+const auth = getAuth()
+onAuthStateChanged(auth, (user) => {
+  isLoggedIn.value = !!user
+  isAuthReady.value = true
 })
 
+// Fetch kategori dan buat map id->name
+const { data: categories, pending: loadingCategories, error: categoriesError } = await useAsyncData<Category[]>(
+  'categories',
+  () => getCategories()
+)
+
+const categoryMap = computed(() => {
+  const map: Record<string, string> = {}
+  categories.value?.forEach(cat => {
+    map[cat.id] = cat.name
+  })
+  return map
+})
+
+// Fetch produk by id
+const { data: product, pending: loadingProduct, error: productError } = await useAsyncData<Product | null>(
+  `product-${productId}`,
+  () => getProductById(productId)
+)
+
+// Gabungkan loading state
+const loading = computed(() => loadingCategories.value || loadingProduct.value)
+
+// Jika produk tidak ditemukan atau error, redirect ke homepage
+if ((productError.value || product.value === null) && !loading.value) {
+  alert('Product not found.')
+  router.push('/')
+}
+
+// Handle add to cart
 const handleAddToCart = async () => {
   try {
     if (!isLoggedIn.value) {
-      alert('You must be logged in to add items to cart.')
+      router.push('/auth/login')
       return
     }
 
-    await addToCart(productId, 1)
+    if (!product.value) return
+
+    await addToCart(product.value.id, 1)
     alert('Added to cart!')
   } catch (error) {
     console.error('Failed to add to cart:', error)
@@ -102,11 +110,11 @@ const handleAddToCart = async () => {
 
         <button
           v-if="isAuthReady"
-          :disabled="product.stock <= 0 || !isLoggedIn"
+          :disabled="product.stock <= 0"
           @click="handleAddToCart"
           class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          {{ product.stock > 0 ? (isLoggedIn ? 'Add to Cart' : 'Login to Add to Cart') : 'Out of Stock' }}
+          {{ product.stock > 0 ? 'Add to Cart' : 'Out of Stock' }}
         </button>
       </div>
     </div>
