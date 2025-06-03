@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import ToastContainer from '~/components/ToastContainer.vue'
+import AppHeader from '~/components/AppHeader.vue'
+import AppFooter from '~/components/AppFooter.vue'
 
 const route = useRoute()
 const { initAuth, authReady, currentUser } = useAuth()
@@ -21,4 +24,6 @@ await initAuth()
   <div v-else class="flex justify-center items-center h-screen">
     <p>Loading authentication...</p>
   </div>
+  
+  <ToastContainer />
 </template>

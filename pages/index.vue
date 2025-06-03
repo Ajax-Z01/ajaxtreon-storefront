@@ -26,14 +26,15 @@ const categoryMap = computed(() => {
 const router = useRouter()
 const isLoggedIn = ref(false)
 const isAuthReady = ref(false)
+const { addToast } = useToast()
 
 const handleAddToCart = async (productId: string) => {
   try {
     await addToCart(productId, 1)
-    alert('Added to cart!')
+    addToast('Added to cart!', 'success')
   } catch (error) {
     console.error('Failed to add to cart:', error)
-    alert('You must be logged in to add items to cart.')
+    addToast('You must be logged in to add items to cart.', 'error')
   }
 }
 

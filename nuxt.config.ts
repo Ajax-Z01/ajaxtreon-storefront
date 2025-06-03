@@ -11,7 +11,12 @@ export default defineNuxtConfig({
     exposeConfig: true,
     viewer: true,
   },
-  plugins: ['~/plugins/firebase.ts'],
+  css: [
+    '@/assets/css/tailwind.css',
+  ],
+  plugins: [
+    '~/plugins/firebase.ts',
+    '~/plugins/lucide.ts'],
   typescript: {
     strict: true
   },
