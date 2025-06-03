@@ -1,75 +1,37 @@
-# Nuxt Minimal Starter
+# Ajaxtreon Storefront
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Ajaxtreon Storefront adalah frontend e-commerce berbasis **Nuxt 3** yang terintegrasi dengan backend ERP Ajaxtreon. Aplikasi ini memungkinkan pelanggan untuk menjelajahi produk, membuat pesanan, dan melakukan pembayaran melalui antarmuka pengguna yang responsif dan modern.
 
-## Setup
+## 📦 Fitur Utama
 
-Make sure to install dependencies:
+- Menampilkan katalog produk
+- Filter dan pencarian produk
+- Keranjang belanja
+- Checkout dan integrasi pembayaran (Midtrans)
+- Riwayat pesanan pelanggan
+- Login & register pelanggan (Firebase Auth atau custom auth)
+- Responsif untuk desktop dan mobile
 
-```bash
-# npm
-npm install
+## 🚀 Teknologi yang Digunakan
 
-# pnpm
-pnpm install
+- [Nuxt 3](https://nuxt.com/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Firebase Authentication](https://firebase.google.com/products/auth)
+- [Cloudinary](https://cloudinary.com/) - untuk penyimpanan gambar
+- [Midtrans Sandbox](https://midtrans.com/) - untuk simulasi pembayaran
 
-# yarn
-yarn install
+## 🔧 Instalasi
 
-# bun
-bun install
-```
+### Prasyarat
 
-## Development Server
+- Node.js 18.x atau lebih baru
+- NPM / Yarn / pnpm
 
-Start the development server on `http://localhost:3000`:
+### Langkah-langkah
 
-```bash
-# npm
-npm run dev
+1. **Clone repositori:**
 
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+   ```bash
+   git clone https://github.com/Ajax-Z01/ajaxtreon-storefront.git
+   cd ajaxtreon-storefront
