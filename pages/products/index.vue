@@ -9,6 +9,7 @@ import type { Category } from '~/types/Category'
 const { getProducts } = useProducts()
 const { getCategories } = useCategories()
 const { addToCart } = useCart()
+const { addToast } = useToast()
 
 const { data: products, pending: loading } = await useAsyncData<Product[]>('all-products', () => getProducts())
 const { data: categories } = await useAsyncData<Category[]>('all-categories', () => getCategories())
@@ -34,10 +35,10 @@ const filteredProducts = computed(() => {
 const handleAddToCart = async (productId: string) => {
   try {
     await addToCart(productId, 1)
-    alert('Added to cart!')
+    addToast('Added to cart!', 'success')
   } catch (error) {
     console.error('Failed to add to cart:', error)
-    alert('Please login to add items to cart.')
+    addToast('You must be logged in to add items to cart.', 'error')
   }
 }
 </script>

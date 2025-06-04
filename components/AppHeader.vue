@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { LogOut, User, Menu, ShoppingCart } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
+import { useAuth } from '~/composables/useAuth'
+import { useToast } from '~/composables/useToast'
+import { useCart } from '~/composables/useCart'
 
 const props = defineProps<{
   route: any
@@ -11,11 +14,37 @@ const props = defineProps<{
 const showMobileMenu = ref(false)
 const router = useRouter()
 const { logout } = useAuth()
+const { addToast } = useToast()
+const { cartCount, subscribeCartItems } = useCart()
 
 const logoutUser = async () => {
   await logout()
   router.push('/auth/login')
+  showMobileMenu.value = false
 }
+
+const handleCartClick = () => {
+  if (!props.isAuthenticated) {
+    addToast('Please login to access your cart.', 'warning')
+    return
+  }
+  router.push('/cart')
+  showMobileMenu.value = false
+}
+
+let unsubscribe: (() => void) | null = null
+
+onMounted(() => {
+  if (props.isAuthenticated) {
+    unsubscribe = subscribeCartItems()
+  }
+})
+
+onUnmounted(() => {
+  if (unsubscribe) {
+    unsubscribe()
+  }
+})
 </script>
 
 <template>
@@ -31,7 +60,7 @@ const logoutUser = async () => {
         <NuxtLink
           to="/"
           class="hover:text-blue-600 transition"
-          :class="{ 'text-blue-700 font-semibold': route.path === '/' }"
+          :class="{ 'text-blue-700 font-semibold': props.route.path === '/' }"
         >
           Home
         </NuxtLink>
@@ -39,20 +68,26 @@ const logoutUser = async () => {
         <NuxtLink
           to="/products"
           class="hover:text-blue-600 transition"
-          :class="{ 'text-blue-700 font-semibold': route.path === '/products' }"
+          :class="{ 'text-blue-700 font-semibold': props.route.path === '/products' }"
         >
           Products
         </NuxtLink>
 
-        <NuxtLink
-          to="/cart"
+        <button
+          @click="handleCartClick"
           class="relative hover:text-blue-600 transition"
-          :class="{ 'text-blue-700 font-semibold': route.path === '/cart' }"
+          :class="{ 'text-blue-700 font-semibold': props.route.path === '/cart' }"
         >
           <ShoppingCart class="inline-block w-5 h-5" />
-        </NuxtLink>
+          <span
+            v-if="cartCount > 0"
+            class="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
+          >
+            {{ cartCount }}
+          </span>
+        </button>
 
-        <template v-if="!isAuthenticated">
+        <template v-if="!props.isAuthenticated">
           <NuxtLink
             to="/auth/login"
             class="px-4 py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition"
@@ -85,25 +120,33 @@ const logoutUser = async () => {
 
     <!-- Mobile Menu -->
     <div v-if="showMobileMenu" class="md:hidden px-6 py-4 bg-gray-50 border-t space-y-3">
-      <NuxtLink to="/" class="block hover:text-blue-600" @click="showMobileMenu = false">
+      <NuxtLink to="/" class="block hover:text-blue-600" @click="() => (showMobileMenu = false)">
         Home
       </NuxtLink>
-      <NuxtLink to="/products" class="block hover:text-blue-600" @click="showMobileMenu = false">
+      <NuxtLink to="/products" class="block hover:text-blue-600" @click="() => (showMobileMenu = false)">
         Products
       </NuxtLink>
-      <NuxtLink to="/cart" class="block hover:text-blue-600" @click="showMobileMenu = false">
+      <button
+        class="block hover:text-blue-600 text-left w-full"
+        @click="() => { showMobileMenu = false; handleCartClick() }"
+      >
         Cart
-      </NuxtLink>
-      <template v-if="!isAuthenticated">
-        <NuxtLink to="/auth/login" class="block text-blue-600 font-semibold" @click="showMobileMenu = false">
+      </button>
+      <template v-if="!props.isAuthenticated">
+        <NuxtLink to="/auth/login" class="block text-blue-600 font-semibold" @click="() => (showMobileMenu = false)">
           Login
         </NuxtLink>
       </template>
       <template v-else>
-        <NuxtLink to="/profile" class="block hover:text-blue-600" @click="showMobileMenu = false">
+        <NuxtLink to="/profile" class="block hover:text-blue-600" @click="() => (showMobileMenu = false)">
           My Account
         </NuxtLink>
-        <button class="text-red-500 hover:text-red-600 block">Logout</button>
+        <button
+          class="text-red-500 hover:text-red-600 block"
+          @click="logoutUser"
+        >
+          Logout
+        </button>
       </template>
     </div>
   </header>

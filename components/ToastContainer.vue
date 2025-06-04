@@ -13,7 +13,8 @@ const { toasts } = useToast()
             'rounded px-4 py-2 shadow-lg text-white animate-fade-in-up',
             toast.type === 'success' && 'bg-green-600',
             toast.type === 'error' && 'bg-red-600',
-            toast.type === 'info' && 'bg-blue-600'
+            toast.type === 'info' && 'bg-blue-600',
+            toast.type === 'warning' && 'bg-yellow-600'
         ]"
         >
         {{ toast.message }}

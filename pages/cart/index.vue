@@ -17,7 +17,7 @@ const {
   clearCart,
   subscribeCartItems
 } = useCart()
-
+const { addToast } = useToast() 
 
 const customer = ref<Customer | null>(null)
 const isCartReady = ref(false)
@@ -34,9 +34,9 @@ onMounted(async () => {
 
     customer.value = customerData
     isCartReady.value = true
-  } catch (err) {
+  } catch (err: any) {
     console.error('Gagal mengambil data customer:', err)
-    alert('Gagal mengambil data customer. Silakan login ulang.')
+    addToast('Gagal mengambil data customer. Silakan login ulang.', 'error')
   }
 })
 
@@ -94,19 +94,19 @@ const formatPrice = (value: number) =>
 
 const checkout = async () => {
   if (cartItems.value.length === 0) {
-    alert('Keranjang kosong.')
+    addToast('Keranjang kosong.', 'warning')
     return
   }
 
   if (!customer.value) {
-    alert('Data pelanggan belum tersedia.')
+    addToast('Data pelanggan belum tersedia.', 'error')
     return
   }
 
   const customerId = customer.value?.id
 
   if (!customerId) {
-    alert('Customer ID tidak tersedia')
+    addToast('Customer ID tidak tersedia', 'error')
     return
   }
 
@@ -142,14 +142,20 @@ const checkout = async () => {
     if (result?.paymentInfo?.redirect_url) {
       await clearCart()
       window.open(result.paymentInfo.redirect_url, '_blank')
+      addToast('Pesanan berhasil dibuat. Mengarahkan ke pembayaran...', 'success')
     } else {
-      alert('Pesanan berhasil dibuat, tetapi tidak ada link pembayaran.')
+      addToast('Pesanan berhasil dibuat, tetapi tidak ada link pembayaran.', 'info')
       console.log('Payment Info:', result.paymentInfo)
     }
 
-  } catch (err: any) {
-    console.error('Gagal membuat pesanan:', err)
-    alert(err.message || 'Gagal membuat pesanan.')
+  } catch (error: any) {
+    console.error('Checkout error:', error)
+    if (error?.message && error.message.includes('E_INSUFFICIENT_STOCK')) {
+      addToast('Jumlah pesanan melebihi stok produk yang tersedia.', 'error')
+    }
+    else {
+      addToast(error.message || 'Gagal membuat pesanan.', 'error')
+    }
   }
 }
 </script>

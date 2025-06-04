@@ -6,6 +6,7 @@ import {
 import type { CartItem, PopulatedCartItem } from '~/types/Cart'
 import type { Product } from '~/types/Product'
 import { getCurrentUserWithToken } from '~/composables/getCurrentUser'
+import { computed } from 'vue'
 
 export const useCart = () => {
   const { $db } = useNuxtApp() as {
@@ -25,7 +26,6 @@ export const useCart = () => {
   const addToCart = async (productId: string, quantity = 1) => {
     try {
       const user = await ensureUser()
-      console.log('Current User ID:', user.uid)
 
       const cartItemRef = doc($db, 'carts', user.uid, 'items', productId)
       const snapshot = await getDoc(cartItemRef)
@@ -128,39 +128,41 @@ export const useCart = () => {
       throw createError({ statusCode: 500, message: 'Failed to clear cart' })
     }
   }
-  
-  const subscribeCartItems = (callback: (items: PopulatedCartItem[]) => void) => {
+
+  const subscribeCartItems = (callback?: (items: PopulatedCartItem[]) => void) => {
     let unsubscribe = () => {}
 
     ensureUser()
       .then(user => {
         const cartRef = collection($db, 'carts', user.uid, 'items')
         unsubscribe = onSnapshot(cartRef, async (cartSnap) => {
-                if (cartSnap.empty) {
-          callback([])
-          return
-        }
-
-        const cartItems = cartSnap.docs.map(doc => doc.data() as CartItem)
-
-        const productRefs = cartItems.map(item => doc($db, 'products', item.productId))
-        const productSnaps = await Promise.all(productRefs.map(ref => getDoc(ref)))
-
-        const populatedCart: PopulatedCartItem[] = []
-        productSnaps.forEach((snap, i) => {
-          if (snap.exists()) {
-            const productData = snap.data() as Product
-            populatedCart.push({
-              product: {
-                ...productData,
-                id: snap.id,
-              },
-              quantity: cartItems[i].quantity,
-            })
+          if (cartSnap.empty) {
+            cartItemsState.value = []
+            if (callback) callback([])
+            return
           }
-        })
 
-          callback(populatedCart)
+          const cartItems = cartSnap.docs.map(doc => doc.data() as CartItem)
+
+          const productRefs = cartItems.map(item => doc($db, 'products', item.productId))
+          const productSnaps = await Promise.all(productRefs.map(ref => getDoc(ref)))
+
+          const populatedCart: PopulatedCartItem[] = []
+          productSnaps.forEach((snap, i) => {
+            if (snap.exists()) {
+              const productData = snap.data() as Product
+              populatedCart.push({
+                product: {
+                  ...productData,
+                  id: snap.id,
+                },
+                quantity: cartItems[i].quantity,
+              })
+            }
+          })
+
+          cartItemsState.value = populatedCart
+          if (callback) callback(populatedCart)
         })
       })
       .catch(err => {
@@ -170,6 +172,10 @@ export const useCart = () => {
     return () => unsubscribe()
   }
 
+  const cartCount = computed(() => {
+    return cartItemsState.value.reduce((total, item) => total + item.quantity, 0)
+  })
+
   return {
     cartItemsState,
     addToCart,
@@ -178,5 +184,6 @@ export const useCart = () => {
     updateCartItem,
     clearCart,
     subscribeCartItems,
+    cartCount,
   }
 }

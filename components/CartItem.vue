@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { defineEmits } from 'vue'
-
 const props = defineProps<{
   item: {
     product: { id: string; name: string; price: number }

@@ -15,6 +15,7 @@ const productId = route.params.id as string
 const { getProductById } = useProducts()
 const { getCategories } = useCategories()
 const { addToCart } = useCart()
+const { addToast } = useToast()
 
 // State untuk auth status
 const isLoggedIn = ref(false)
@@ -67,10 +68,10 @@ const handleAddToCart = async () => {
     if (!product.value) return
 
     await addToCart(product.value.id, 1)
-    alert('Added to cart!')
+    addToast('Added to cart!', 'success')
   } catch (error) {
     console.error('Failed to add to cart:', error)
-    alert('Failed to add item to cart.')
+    addToast('You must be logged in to add items to cart.', 'error')
   }
 }
 </script>

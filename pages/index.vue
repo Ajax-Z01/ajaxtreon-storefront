@@ -27,6 +27,16 @@ const router = useRouter()
 const isLoggedIn = ref(false)
 const isAuthReady = ref(false)
 const { addToast } = useToast()
+const selectedCategoryId = ref<string | null>(null)
+
+const filteredProducts = computed(() => {
+  if (!selectedCategoryId.value) return products.value || []
+  return (products.value || []).filter(p => p.categoryId === selectedCategoryId.value)
+})
+
+const selectCategory = (categoryId: string | null) => {
+  selectedCategoryId.value = categoryId
+}
 
 const handleAddToCart = async (productId: string) => {
   try {
@@ -79,16 +89,60 @@ onMounted(() => {
         </div>
       </div>
     </section>
+    
+    <!-- Category Section -->
+    <section class="max-w-7xl mx-auto py-16 px-6">
+      <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">🏷️ Category</h2>
+
+      <div v-if="loadingCategories" class="text-center text-gray-500 py-10">Loading categories...</div>
+
+      <div v-else class="flex flex-wrap justify-center gap-4">
+        <button
+          @click="selectCategory(null)"
+          :class="[
+            'px-4 py-2 rounded-full border transition',
+            selectedCategoryId === null ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+          ]"
+        >
+          All
+        </button>
+
+        <button
+          v-for="category in categories"
+          :key="category.id"
+          @click="selectCategory(category.id)"
+          :class="[
+            'px-4 py-2 rounded-full border transition',
+            selectedCategoryId === category.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+          ]"
+        >
+          {{ category.name }}
+        </button>
+        
+      </div>
+    </section>
 
     <!-- Product Section -->
     <section class="max-w-7xl mx-auto py-16 px-6">
+      
       <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">🧾 Featured Products</h2>
 
-      <div v-if="loading" class="text-center text-gray-500 py-10">Loading products...</div>
+      <div v-if="loading" class="grid gap-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div v-for="i in 8" :key="i" class="animate-pulse bg-white rounded-2xl p-5 border">
+          <div class="h-48 bg-gray-200 rounded mb-4"></div>
+          <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+          <div class="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+          <div class="h-4 bg-gray-200 rounded w-full"></div>
+        </div>
+      </div>
+      
+      <div v-if="filteredProducts.length === 0 && !loading" class="text-center text-gray-500 py-10">
+        No products available in this category.
+      </div>
 
       <div v-else class="grid gap-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         <div
-          v-for="product in products"
+          v-for="product in filteredProducts"
           :key="product.id"
           class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition relative"
         >
@@ -100,7 +154,7 @@ onMounted(() => {
               <img
                 :src="product.imageUrl"
                 :alt="product.name"
-                class="w-full h-full object-cover"
+                class="w-full h-full object-cover product-image"
               />
             </div>
             <div class="p-5">
@@ -138,3 +192,12 @@ onMounted(() => {
     </section>
   </div>
 </template>
+
+<style scoped>
+.product-image {
+  transition: transform 0.3s ease;
+}
+.product-image:hover {
+  transform: scale(1.05);
+}
+</style>
