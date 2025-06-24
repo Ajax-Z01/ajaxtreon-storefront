@@ -8,6 +8,18 @@ import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import type { Product } from '~/types/Product'
 import type { Category } from '~/types/Category'
 
+import {
+  ShoppingCart,
+  ArrowLeft,
+  Info,
+  Layers,
+  Tag,
+  Barcode,
+  Calendar,
+  Clock,
+  PackageCheck,
+} from 'lucide-vue-next'
+
 const route = useRoute()
 const router = useRouter()
 const productId = route.params.id as string
@@ -17,19 +29,16 @@ const { getCategories } = useCategories()
 const { addToCart } = useCart()
 const { addToast } = useToast()
 
-// State untuk auth status
 const isLoggedIn = ref(false)
 const isAuthReady = ref(false)
 
-// Setup Firebase Auth listener
 const auth = getAuth()
 onAuthStateChanged(auth, (user) => {
   isLoggedIn.value = !!user
   isAuthReady.value = true
 })
 
-// Fetch kategori dan buat map id->name
-const { data: categories, pending: loadingCategories, error: categoriesError } = await useAsyncData<Category[]>(
+const { data: categories, pending: loadingCategories } = await useAsyncData<Category[]>(
   'categories',
   () => getCategories()
 )
@@ -42,22 +51,25 @@ const categoryMap = computed(() => {
   return map
 })
 
-// Fetch produk by id
 const { data: product, pending: loadingProduct, error: productError } = await useAsyncData<Product | null>(
   `product-${productId}`,
   () => getProductById(productId)
 )
 
-// Gabungkan loading state
 const loading = computed(() => loadingCategories.value || loadingProduct.value)
 
-// Jika produk tidak ditemukan atau error, redirect ke homepage
 if ((productError.value || product.value === null) && !loading.value) {
   alert('Product not found.')
   router.push('/')
 }
 
-// Handle add to cart
+const formatTimestamp = (value: any): string => {
+  if (!value) return '-'
+  if ('_seconds' in value) return new Date(value._seconds * 1000).toLocaleString()
+  if (typeof value === 'string' || value instanceof Date) return new Date(value).toLocaleString()
+  return '-'
+}
+
 const handleAddToCart = async () => {
   try {
     if (!isLoggedIn.value) {
@@ -77,44 +89,85 @@ const handleAddToCart = async () => {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto py-16 px-6">
-    <div v-if="loading" class="text-center text-gray-500">Loading product...</div>
+  <div class="max-w-6xl mx-auto py-16 px-6">
+    <!-- Back -->
+    <button
+      @click="router.back()"
+      class="mb-6 flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
+    >
+      <ArrowLeft class="w-5 h-5" />
+      Kembali ke katalog
+    </button>
 
-    <div v-else-if="product" class="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
-      <!-- Gambar Produk -->
-      <div class="w-full h-96 bg-gray-100 rounded-lg overflow-hidden">
+    <!-- Loading -->
+    <div v-if="loading" class="text-center text-gray-500 flex items-center justify-center gap-2">
+      <Info class="w-4 h-4" />
+      Loading product...
+    </div>
+
+    <!-- Product Found -->
+    <div v-else-if="product" class="grid grid-cols-1 md:grid-cols-2 gap-12">
+      <!-- Gambar -->
+      <div class="w-full h-[400px] bg-gray-100 rounded-lg overflow-hidden shadow">
         <img
           :src="product.imageUrl"
           :alt="product.name"
-          class="w-full h-full object-cover"
+          class="w-full h-full object-cover object-center"
         />
       </div>
 
-      <!-- Detail Produk -->
+      <!-- Detail -->
       <div>
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ product.name }}</h1>
-        <p class="text-sm text-gray-500 mb-4">
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">{{ product.name }}</h1>
+
+        <div class="text-sm text-gray-500 mb-4 flex items-center gap-2">
+          <Layers class="w-4 h-4" />
           Kategori: {{ categoryMap[product.categoryId] || 'Uncategorized' }}
+        </div>
+
+        <p class="text-base text-gray-700 mb-4 flex items-start gap-2">
+          <Info class="w-5 h-5 mt-0.5" />
+          {{ product.description || 'No description available.' }}
         </p>
-        <p class="text-lg text-gray-700 mb-4">{{ product.description || 'No description available.' }}</p>
 
-        <p class="text-2xl text-blue-600 font-bold mb-4">Rp {{ product.price?.toLocaleString() }}</p>
+        <div class="text-3xl text-blue-600 font-bold mb-6 flex items-center gap-2">
+          <Tag class="w-6 h-6" />
+          Rp {{ product.price?.toLocaleString() }}
+        </div>
 
-        <div class="mb-6">
+        <div class="mb-4">
           <span
-            class="inline-block px-3 py-1 rounded-full text-sm font-semibold"
+            class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium"
             :class="product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
           >
-            {{ product.stock > 0 ? `In Stock (${product.stock})` : 'Out of Stock' }}
+            <PackageCheck class="w-4 h-4" />
+            {{ product.stock > 0 ? `Stok Tersedia (${product.stock})` : 'Stok Habis' }}
           </span>
         </div>
 
+        <div class="mb-4 flex flex-col gap-2 text-sm text-gray-600">
+          <div class="flex items-center gap-2">
+            <Barcode class="w-4 h-4" />
+            SKU: {{ product.sku || '-' }}
+          </div>
+          <div class="flex items-center gap-2">
+            <Calendar class="w-4 h-4" />
+            <strong>Created At:</strong> {{ formatTimestamp(product.createdAt) }}
+          </div>
+          <div class="flex items-center gap-2">
+            <Clock class="w-4 h-4" />
+            <strong>Updated At:</strong> {{ formatTimestamp(product.updatedAt) }}
+          </div>
+        </div>
+
+        <!-- Tombol Add to Cart -->
         <button
           v-if="isAuthReady"
           :disabled="product.stock <= 0"
           @click="handleAddToCart"
-          class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+          class="mt-6 w-full inline-flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
+          <ShoppingCart class="w-5 h-5" />
           {{ product.stock > 0 ? 'Add to Cart' : 'Out of Stock' }}
         </button>
       </div>

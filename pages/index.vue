@@ -7,6 +7,7 @@ import { useCategories } from '~/composables/useCategories'
 import { useCart } from '~/composables/useCart'
 import type { Product } from '~/types/Product'
 import type { Category } from '~/types/Category'
+import { ShoppingCart, Tag, Loader, AlertCircle, Package, CircleDollarSign, Boxes } from 'lucide-vue-next'
 
 const { getProducts } = useProducts()
 const { getCategories } = useCategories()
@@ -62,7 +63,9 @@ onMounted(() => {
     <!-- Hero Section -->
     <section class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white py-20 px-6">
       <div class="max-w-7xl mx-auto text-center">
-        <h1 class="text-5xl font-extrabold mb-4">🛒 Ajaxtreon Store</h1>
+        <h1 class="text-5xl font-extrabold mb-4 flex justify-center items-center gap-2">
+          <Boxes class="w-8 h-8" /> Ajaxtreon Store
+        </h1>
         <p class="text-xl text-blue-100 mb-8">Find and manage your business inventory with ease.</p>
         <div v-if="isAuthReady" class="flex justify-center gap-4 flex-wrap">
           <button
@@ -92,9 +95,13 @@ onMounted(() => {
     
     <!-- Category Section -->
     <section class="max-w-7xl mx-auto py-16 px-6">
-      <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">🏷️ Category</h2>
+      <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center flex justify-center items-center gap-2">
+        <Tag class="w-6 h-6" /> Category
+      </h2>
 
-      <div v-if="loadingCategories" class="text-center text-gray-500 py-10">Loading categories...</div>
+      <div v-if="loadingCategories" class="text-center text-gray-500 py-10 flex justify-center items-center gap-2">
+        <Loader class="w-5 h-5 animate-spin" /> Loading categories...
+      </div>
 
       <div v-else class="flex flex-wrap justify-center gap-4">
         <button
@@ -125,7 +132,9 @@ onMounted(() => {
     <!-- Product Section -->
     <section class="max-w-7xl mx-auto py-16 px-6">
       
-      <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">🧾 Featured Products</h2>
+      <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center flex justify-center items-center gap-2">
+        <Package class="w-6 h-6" /> Featured Products
+      </h2>
 
       <div v-if="loading" class="grid gap-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         <div v-for="i in 8" :key="i" class="animate-pulse bg-white rounded-2xl p-5 border">
@@ -136,8 +145,8 @@ onMounted(() => {
         </div>
       </div>
       
-      <div v-if="filteredProducts.length === 0 && !loading" class="text-center text-gray-500 py-10">
-        No products available in this category.
+      <div v-if="filteredProducts.length === 0 && !loading" class="text-center text-gray-500 py-10 flex justify-center items-center gap-2">
+        <AlertCircle class="w-5 h-5" /> No products available in this category.
       </div>
 
       <div v-else class="grid gap-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -167,7 +176,9 @@ onMounted(() => {
               <p class="text-sm text-gray-600 mb-2 truncate">
                 {{ product.description || 'No description available.' }}
               </p>
-              <p class="text-blue-600 font-bold text-lg mb-2">Rp {{ product.price?.toLocaleString() }}</p>
+              <p class="text-blue-600 font-bold text-lg mb-3 flex items-center gap-1">
+                <CircleDollarSign class="w-4 h-4" /> Rp {{ product.price?.toLocaleString() }}
+              </p>
 
               <div
                 v-if="product.stock <= 0"
@@ -182,8 +193,9 @@ onMounted(() => {
             <button
               :disabled="product.stock <= 0"
               @click.stop="handleAddToCart(product.id)"
-              class="mt-2 w-full bg-blue-600 text-white py-2 rounded-full hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+              class="mt-2 w-full inline-flex items-center justify-center gap-2 bg-blue-600 text-white py-2 rounded-full hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
+              <ShoppingCart class="w-4 h-4" />
               {{ product.stock > 0 ? 'Add to Cart' : 'Out of Stock' }}
             </button>
           </div>
