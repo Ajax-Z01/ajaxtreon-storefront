@@ -38,7 +38,9 @@ onUnmounted(() => {
 <template>
   <div v-if="authReady">
     <div class="flex flex-col min-h-screen">
-      <AppHeader :route="route" :isAuthenticated="!!currentUser" :cartCount="cartCount" />
+      <client-only>
+        <AppHeader :route="route" :isAuthenticated="!!currentUser" :cartCount="cartCount" />
+      </client-only>
       <main class="flex-grow bg-gray-50">
         <NuxtPage />
       </main>

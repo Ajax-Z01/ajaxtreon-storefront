@@ -1,23 +1,26 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watchEffect, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { format } from 'date-fns'
 import { useProducts } from '~/composables/useProducts'
 import { useCategories } from '~/composables/useCategories'
 import { useCart } from '~/composables/useCart'
+import { useSellers } from '~/composables/useSellers'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
-import type { Product } from '~/types/Product'
-import type { Category } from '~/types/Category'
+
+import type { Seller } from '~/types/Seller'
 
 import {
-  ShoppingCart,
   ArrowLeft,
   Info,
   Layers,
   Tag,
+  PackageCheck,
   Barcode,
   Calendar,
   Clock,
-  PackageCheck,
+  ShoppingCart,
+  Store,
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -27,8 +30,10 @@ const productId = route.params.id as string
 const { getProductById } = useProducts()
 const { getCategories } = useCategories()
 const { addToCart } = useCart()
+const { getSellerByFirebaseUid } = useSellers()
 const { addToast } = useToast()
 
+// Auth state (client-only)
 const isLoggedIn = ref(false)
 const isAuthReady = ref(false)
 
@@ -38,77 +43,115 @@ onAuthStateChanged(auth, (user) => {
   isAuthReady.value = true
 })
 
-const { data: categories, pending: loadingCategories } = await useAsyncData<Category[]>(
-  'categories',
-  () => getCategories()
-)
-
-const categoryMap = computed(() => {
-  const map: Record<string, string> = {}
-  categories.value?.forEach(cat => {
-    map[cat.id] = cat.name
-  })
-  return map
-})
-
-const { data: product, pending: loadingProduct, error: productError } = await useAsyncData<Product | null>(
+// Fetch product + categories with useAsyncData (SSR friendly)
+const { data: product, pending: loadingProduct, error: productError } = await useAsyncData(
   `product-${productId}`,
   () => getProductById(productId)
 )
 
-const loading = computed(() => loadingCategories.value || loadingProduct.value)
+const { data: categories, pending: loadingCategories } = await useAsyncData(
+  'categories',
+  () => getCategories()
+)
 
-if ((productError.value || product.value === null) && !loading.value) {
-  alert('Product not found.')
+// Map category id to name
+const categoryMap = computed(() => {
+  const map: Record<string, string> = {}
+  categories.value?.forEach(c => {
+    map[c.id] = c.name
+  })
+  return map
+})
+
+// Loading flags combined (except seller)
+const loadingBasic = computed(() => loadingProduct.value || loadingCategories.value)
+
+// Seller state & loading
+const seller = ref<Seller | null>(null)
+const loadingSeller = ref(false)
+
+// Fetch seller only after product ready
+watchEffect(async () => {
+  if (product.value?.createdBy) {
+    loadingSeller.value = true
+    try {
+      seller.value = await getSellerByFirebaseUid(product.value.createdBy)
+    } catch (e) {
+      console.error('Gagal mengambil data seller:', e)
+      seller.value = null
+    } finally {
+      loadingSeller.value = false
+    }
+  } else {
+    seller.value = null
+    loadingSeller.value = false
+  }
+})
+
+// Full loading flag including seller
+const loading = computed(() => loadingBasic.value || loadingSeller.value)
+
+// Error handling: redirect jika produk tidak ditemukan
+if ((productError.value || product.value === null) && !loadingBasic.value) {
+  alert('Produk tidak ditemukan.')
   router.push('/')
 }
 
-const formatTimestamp = (value: any): string => {
+// Format timestamp dengan aman
+const formatTimestamp = (value: unknown): string => {
   if (!value) return '-'
-  if ('_seconds' in value) return new Date(value._seconds * 1000).toLocaleString()
-  if (typeof value === 'string' || value instanceof Date) return new Date(value).toLocaleString()
-  return '-'
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    '_seconds' in value &&
+    typeof (value as any)._seconds === 'number'
+  ) {
+    return format(new Date((value as any)._seconds * 1000), 'dd/MM/yyyy, HH:mm:ss')
+  }
+  const date = value instanceof Date ? value : new Date(String(value))
+  if (isNaN(date.getTime())) return '-'
+  return format(date, 'dd/MM/yyyy, HH:mm:ss')
 }
 
+// Add to cart handler
 const handleAddToCart = async () => {
+  if (!isLoggedIn.value) {
+    router.push('/auth/login')
+    return
+  }
+  if (!product.value) return
+
   try {
-    if (!isLoggedIn.value) {
-      router.push('/auth/login')
-      return
-    }
-
-    if (!product.value) return
-
     await addToCart(product.value.id, 1)
-    addToast('Added to cart!', 'success')
-  } catch (error) {
-    console.error('Failed to add to cart:', error)
-    addToast('You must be logged in to add items to cart.', 'error')
+    addToast('Produk berhasil ditambahkan ke keranjang.', 'success')
+  } catch (err) {
+    console.error(err)
+    addToast('Gagal menambahkan ke keranjang.', 'error')
   }
 }
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto py-16 px-6">
+  <div class="max-w-6xl mx-auto py-16 px-4 sm:px-6">
     <!-- Back -->
     <button
       @click="router.back()"
-      class="mb-6 flex items-center gap-2 text-gray-600 hover:text-blue-600 transition"
+      class="mb-8 inline-flex items-center text-gray-500 hover:text-blue-600 transition gap-2"
     >
       <ArrowLeft class="w-5 h-5" />
-      Kembali ke katalog
+      <span>Kembali ke katalog</span>
     </button>
 
     <!-- Loading -->
     <div v-if="loading" class="text-center text-gray-500 flex items-center justify-center gap-2">
       <Info class="w-4 h-4" />
-      Loading product...
+      Memuat produk...
     </div>
 
-    <!-- Product Found -->
+    <!-- Product Detail -->
     <div v-else-if="product" class="grid grid-cols-1 md:grid-cols-2 gap-12">
-      <!-- Gambar -->
-      <div class="w-full h-[400px] bg-gray-100 rounded-lg overflow-hidden shadow">
+      <!-- Image -->
+      <div class="w-full h-[400px] bg-gray-100 rounded-lg shadow overflow-hidden">
         <img
           :src="product.imageUrl"
           :alt="product.name"
@@ -116,59 +159,75 @@ const handleAddToCart = async () => {
         />
       </div>
 
-      <!-- Detail -->
-      <div>
-        <h1 class="text-4xl font-bold text-gray-800 mb-2">{{ product.name }}</h1>
+      <!-- Info -->
+      <div class="space-y-4 text-gray-800">
+        <h1 class="text-4xl font-bold">{{ product.name }}</h1>
 
-        <div class="text-sm text-gray-500 mb-4 flex items-center gap-2">
+        <!-- Kategori -->
+        <div class="flex items-center gap-2 text-sm text-gray-600">
           <Layers class="w-4 h-4" />
-          Kategori: {{ categoryMap[product.categoryId] || 'Uncategorized' }}
+          <span>Kategori: {{ categoryMap[product.categoryId] || 'Uncategorized' }}</span>
         </div>
 
-        <p class="text-base text-gray-700 mb-4 flex items-start gap-2">
-          <Info class="w-5 h-5 mt-0.5" />
-          {{ product.description || 'No description available.' }}
+        <!-- Seller -->
+        <div v-if="loadingSeller" class="text-sm text-gray-500">Memuat penjual...</div>
+        <div v-else-if="seller" class="flex items-center gap-2 text-sm text-gray-600">
+          <Store class="w-4 h-4" />
+          <span>
+            Dijual oleh: 
+            <span class="font-medium text-gray-800">
+              {{ seller.storeName || seller.name }}
+            </span>
+          </span>
+        </div>
+
+        <!-- Deskripsi -->
+        <p class="text-base text-gray-700">
+          {{ product.description || 'Tidak ada deskripsi.' }}
         </p>
 
-        <div class="text-3xl text-blue-600 font-bold mb-6 flex items-center gap-2">
+        <!-- Harga -->
+        <div class="text-3xl font-bold text-blue-600 flex items-center gap-2 mt-4">
           <Tag class="w-6 h-6" />
           Rp {{ product.price?.toLocaleString() }}
         </div>
 
-        <div class="mb-4">
+        <!-- Stok -->
+        <div>
           <span
             class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium"
-            :class="product.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+            :class="product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
           >
             <PackageCheck class="w-4 h-4" />
-            {{ product.stock > 0 ? `Stok Tersedia (${product.stock})` : 'Stok Habis' }}
+            {{ product.stock > 0 ? `Stok tersedia (${product.stock})` : 'Stok habis' }}
           </span>
         </div>
 
-        <div class="mb-4 flex flex-col gap-2 text-sm text-gray-600">
+        <!-- SKU + Tanggal -->
+        <div class="text-sm text-gray-600 space-y-1">
           <div class="flex items-center gap-2">
             <Barcode class="w-4 h-4" />
-            SKU: {{ product.sku || '-' }}
+            <span>SKU: {{ product.sku || '-' }}</span>
           </div>
           <div class="flex items-center gap-2">
             <Calendar class="w-4 h-4" />
-            <strong>Created At:</strong> {{ formatTimestamp(product.createdAt) }}
+            <span>Created: {{ formatTimestamp(product.createdAt) }}</span>
           </div>
           <div class="flex items-center gap-2">
             <Clock class="w-4 h-4" />
-            <strong>Updated At:</strong> {{ formatTimestamp(product.updatedAt) }}
+            <span>Updated: {{ formatTimestamp(product.updatedAt) }}</span>
           </div>
         </div>
 
         <!-- Tombol Add to Cart -->
         <button
           v-if="isAuthReady"
-          :disabled="product.stock <= 0"
           @click="handleAddToCart"
-          class="mt-6 w-full inline-flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+          :disabled="product.stock <= 0"
+          class="mt-6 w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <ShoppingCart class="w-5 h-5" />
-          {{ product.stock > 0 ? 'Add to Cart' : 'Out of Stock' }}
+          {{ product.stock > 0 ? 'Tambah ke Keranjang' : 'Stok Habis' }}
         </button>
       </div>
     </div>
