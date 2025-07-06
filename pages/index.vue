@@ -40,12 +40,17 @@ const selectCategory = (categoryId: string | null) => {
 }
 
 const handleAddToCart = async (productId: string) => {
+  if (!isLoggedIn.value || !isAuthReady.value) {
+    addToast('You must be logged in to add items to cart.', 'error')
+    return
+  }
+
   try {
     await addToCart(productId, 1)
     addToast('Added to cart!', 'success')
   } catch (error) {
     console.error('Failed to add to cart:', error)
-    addToast('You must be logged in to add items to cart.', 'error')
+    addToast('Failed to add to cart.', 'error')
   }
 }
 

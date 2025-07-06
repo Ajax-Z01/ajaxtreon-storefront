@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { LogOut, User, Menu, ShoppingCart } from 'lucide-vue-next'
+import { LogOut, User, Menu, ShoppingCart, Bell } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
 import { useToast } from '~/composables/useToast'
 import { useCart } from '~/composables/useCart'
+import { useNotifications } from '~/composables/useNotifications'
 
 const props = defineProps<{
   route: any
@@ -16,6 +17,18 @@ const router = useRouter()
 const { logout } = useAuth()
 const { addToast } = useToast()
 const { cartCount, subscribeCartItems } = useCart()
+
+const { getNotifications } = useNotifications()
+const unreadCount = ref(0)
+
+const fetchNotifications = async () => {
+  try {
+    const notifications = await getNotifications()
+    unreadCount.value = notifications.filter(n => !n.read).length
+  } catch (error) {
+    console.error('Failed to fetch notifications:', error)
+  }
+}
 
 const logoutUser = async () => {
   await logout()
@@ -32,18 +45,22 @@ const handleCartClick = () => {
   showMobileMenu.value = false
 }
 
+const handleNotificationClick = () => {
+  router.push('/notifications')
+  showMobileMenu.value = false
+}
+
 let unsubscribe: (() => void) | null = null
 
 onMounted(() => {
   if (props.isAuthenticated) {
+    fetchNotifications()
     unsubscribe = subscribeCartItems()
   }
 })
 
 onUnmounted(() => {
-  if (unsubscribe) {
-    unsubscribe()
-  }
+  unsubscribe?.()
 })
 </script>
 
@@ -84,6 +101,20 @@ onUnmounted(() => {
             class="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
           >
             {{ cartCount }}
+          </span>
+        </button>
+        
+        <button
+          @click="handleNotificationClick"
+          class="relative hover:text-blue-600 transition"
+          :class="{ 'text-blue-700 font-semibold': props.route.path === '/notifications' }"
+        >
+          <Bell class="inline-block w-5 h-5" />
+          <span
+            v-if="unreadCount > 0"
+            class="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
+          >
+            {{ unreadCount }}
           </span>
         </button>
 
@@ -131,6 +162,15 @@ onUnmounted(() => {
         @click="() => { showMobileMenu = false; handleCartClick() }"
       >
         Cart
+      </button>
+      <button
+        class="block hover:text-blue-600 text-left w-full"
+        @click="() => { showMobileMenu = false; handleNotificationClick() }"
+      >
+        Notifications
+        <span v-if="unreadCount > 0" class="ml-2 text-sm bg-red-500 text-white px-2 rounded-full">
+          {{ unreadCount }}
+        </span>
       </button>
       <template v-if="!props.isAuthenticated">
         <NuxtLink to="/auth/login" class="block text-blue-600 font-semibold" @click="() => (showMobileMenu = false)">

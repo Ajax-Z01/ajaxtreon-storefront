@@ -3,171 +3,120 @@ import {
   doc, setDoc, getDoc, updateDoc, deleteDoc,
   collection, getDocs, increment, onSnapshot
 } from 'firebase/firestore'
-import type { CartItem, PopulatedCartItem } from '~/types/Cart'
-import type { Product } from '~/types/Product'
 import { getCurrentUserWithToken } from '~/composables/getCurrentUser'
+import type { Product } from '~/types/Product'
+import type { CartItem, PopulatedCartItem } from '~/types/Cart'
 import { computed } from 'vue'
 
 export const useCart = () => {
-  const { $db } = useNuxtApp() as {
-    $db: import('firebase/firestore').Firestore
-  }
-
+  const { $db } = useNuxtApp() as { $db: import('firebase/firestore').Firestore }
   const cartItemsState = useState<PopulatedCartItem[]>('cartItems', () => [])
 
+  let cachedUser: { uid: string } | null = null
   const ensureUser = async () => {
+    if (cachedUser) return cachedUser
     const { user } = await getCurrentUserWithToken()
-    if (!user) {
-      throw createError({ statusCode: 401, message: 'User must be logged in' })
-    }
+    if (!user) throw createError({ statusCode: 401, message: 'User must be logged in' })
+    cachedUser = user
     return user
   }
 
   const addToCart = async (productId: string, quantity = 1) => {
+    const user = await ensureUser()
+    const cartItemRef = doc($db, 'carts', user.uid, 'items', productId)
+
     try {
-      const user = await ensureUser()
+      await updateDoc(cartItemRef, {
+        quantity: increment(quantity),
+      })
+    } catch (err: any) {
+      if (err.code === 'not-found') {
+        const productSnap = await getDoc(doc($db, 'products', productId))
+        if (!productSnap.exists()) throw createError({ statusCode: 404, message: 'Product not found' })
 
-      const cartItemRef = doc($db, 'carts', user.uid, 'items', productId)
-      const snapshot = await getDoc(cartItemRef)
-
-      if (snapshot.exists()) {
-        await updateDoc(cartItemRef, {
-          quantity: increment(quantity),
-        })
-      } else {
+        const product = productSnap.data() as Product
         const cartItem: CartItem = {
           productId,
           quantity,
           createdAt: new Date(),
+          productSnapshot: {
+            name: product.name,
+            imageUrl: product.imageUrl,
+            price: product.price,
+          },
         }
+
         await setDoc(cartItemRef, cartItem)
+      } else {
+        throw createError({ statusCode: 500, message: 'Failed to add to cart' })
       }
-    } catch (error) {
-      console.error('Error adding to cart:', error)
-      throw createError({ statusCode: 500, message: 'Failed to add item to cart' })
     }
   }
 
   const getCartItems = async (): Promise<PopulatedCartItem[]> => {
-    try {
-      const user = await ensureUser()
+    const user = await ensureUser()
+    const cartRef = collection($db, 'carts', user.uid, 'items')
+    const cartSnap = await getDocs(cartRef)
 
-      const cartRef = collection($db, 'carts', user.uid, 'items')
-      const cartSnap = await getDocs(cartRef)
+    const populatedCart: PopulatedCartItem[] = cartSnap.docs.map(docSnap => {
+      const data = docSnap.data() as CartItem
+      return {
+        product: {
+          id: data.productId,
+          ...data.productSnapshot,
+        },
+        quantity: data.quantity,
+      }
+    })
 
-      const cartItems = cartSnap.docs.map(doc => doc.data() as CartItem)
-
-      const productRefs = cartItems.map(item => doc($db, 'products', item.productId))
-      const productSnaps = await Promise.all(productRefs.map(ref => getDoc(ref)))
-
-      const populatedCart: PopulatedCartItem[] = []
-      productSnaps.forEach((snap, i) => {
-        if (snap.exists()) {
-          const productData = snap.data() as Product
-          populatedCart.push({
-            product: {
-              ...productData,
-              id: snap.id,
-            },
-            quantity: cartItems[i].quantity,
-          })
-        }
-      })
-
-      cartItemsState.value = populatedCart
-      return populatedCart
-    } catch (error) {
-      console.error('Error fetching cart items:', error)
-      throw createError({ statusCode: 500, message: 'Failed to fetch cart items' })
-    }
+    cartItemsState.value = populatedCart
+    return populatedCart
   }
 
   const removeFromCart = async (productId: string) => {
-    try {
-      const user = await ensureUser()
-
-      const cartItemRef = doc($db, 'carts', user.uid, 'items', productId)
-      await deleteDoc(cartItemRef)
-    } catch (error) {
-      console.error('Error removing from cart:', error)
-      throw createError({ statusCode: 500, message: 'Failed to remove item from cart' })
-    }
+    const user = await ensureUser()
+    await deleteDoc(doc($db, 'carts', user.uid, 'items', productId))
   }
 
   const updateCartItem = async (productId: string, quantity: number) => {
-    try {
-      const user = await ensureUser()
+    const user = await ensureUser()
+    const cartItemRef = doc($db, 'carts', user.uid, 'items', productId)
 
-      const cartItemRef = doc($db, 'carts', user.uid, 'items', productId)
-      if (quantity <= 0) {
-        await deleteDoc(cartItemRef)
-      } else {
-        await updateDoc(cartItemRef, { quantity })
-      }
-    } catch (error) {
-      console.error('Error updating cart item:', error)
-      throw createError({
-        statusCode: 500,
-        message: `Failed to update cart item: ${(error as Error).message}`,
-      })
+    if (quantity <= 0) {
+      await deleteDoc(cartItemRef)
+    } else {
+      await updateDoc(cartItemRef, { quantity })
     }
   }
-  
-  const clearCart = async () => {
-    try {
-      const user = await ensureUser()
-      const cartRef = collection($db, 'carts', user.uid, 'items')
-      const cartSnap = await getDocs(cartRef)
 
-      const deletePromises = cartSnap.docs.map(docSnap => deleteDoc(docSnap.ref))
-      await Promise.all(deletePromises)
-      
-      cartItemsState.value = []
-    } catch (error) {
-      console.error('Error clearing cart:', error)
-      throw createError({ statusCode: 500, message: 'Failed to clear cart' })
-    }
+  const clearCart = async () => {
+    const user = await ensureUser()
+    const cartRef = collection($db, 'carts', user.uid, 'items')
+    const snap = await getDocs(cartRef)
+    await Promise.all(snap.docs.map(docSnap => deleteDoc(docSnap.ref)))
+    cartItemsState.value = []
   }
 
   const subscribeCartItems = (callback?: (items: PopulatedCartItem[]) => void) => {
     let unsubscribe = () => {}
 
-    ensureUser()
-      .then(user => {
-        const cartRef = collection($db, 'carts', user.uid, 'items')
-        unsubscribe = onSnapshot(cartRef, async (cartSnap) => {
-          if (cartSnap.empty) {
-            cartItemsState.value = []
-            if (callback) callback([])
-            return
+    ensureUser().then(user => {
+      const cartRef = collection($db, 'carts', user.uid, 'items')
+      unsubscribe = onSnapshot(cartRef, async (snap) => {
+        const items: PopulatedCartItem[] = snap.docs.map(doc => {
+          const data = doc.data() as CartItem
+          return {
+            product: {
+              id: data.productId,
+              ...data.productSnapshot,
+            },
+            quantity: data.quantity,
           }
-
-          const cartItems = cartSnap.docs.map(doc => doc.data() as CartItem)
-
-          const productRefs = cartItems.map(item => doc($db, 'products', item.productId))
-          const productSnaps = await Promise.all(productRefs.map(ref => getDoc(ref)))
-
-          const populatedCart: PopulatedCartItem[] = []
-          productSnaps.forEach((snap, i) => {
-            if (snap.exists()) {
-              const productData = snap.data() as Product
-              populatedCart.push({
-                product: {
-                  ...productData,
-                  id: snap.id,
-                },
-                quantity: cartItems[i].quantity,
-              })
-            }
-          })
-
-          cartItemsState.value = populatedCart
-          if (callback) callback(populatedCart)
         })
+        cartItemsState.value = items
+        if (callback) callback(items)
       })
-      .catch(err => {
-        console.error('Subscribe cart failed:', err)
-      })
+    })
 
     return () => unsubscribe()
   }
