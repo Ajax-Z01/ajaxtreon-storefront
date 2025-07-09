@@ -112,10 +112,10 @@ onMounted(() => {
           notif.read ? 'border-gray-200' : 'border-blue-500 bg-blue-50'
         ]"
       >
-        <div class="flex gap-3 max-w-[calc(100%-100px)]">
+        <div class="flex gap-3 w-full min-w-0">
           <component
             :is="iconByType[notif.type] || Info"
-            class="w-6 h-6 flex-shrink-0"
+            class="w-6 h-6 flex-shrink-0 mt-1"
             :class="{
               'text-green-600': notif.type === 'success',
               'text-blue-600': notif.type === 'info',
@@ -124,36 +124,57 @@ onMounted(() => {
             }"
             aria-hidden="true"
           />
-          <div>
-            <h2 class="font-semibold text-base text-gray-900 truncate" :title="notif.title">{{ notif.title }}</h2>
-            <p class="text-sm text-gray-700 mb-1 truncate" :title="notif.message">{{ notif.message }}</p>
-            <span class="text-xs uppercase font-medium text-gray-500">{{ notif.type }}</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex justify-between items-start mb-1">
+              <h2 class="font-semibold text-base text-gray-900 break-words whitespace-normal">
+                {{ notif.title }}
+              </h2>
+              <span class="text-xs text-gray-400 select-none whitespace-nowrap">
+                {{ formatRelativeDate(notif.createdAt) }}
+              </span>
+            </div>
+
+            <p
+              class="text-sm text-gray-700 break-words whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto pr-1"
+            >
+              {{ notif.message }}
+            </p>
+
+            <div class="mt-2 flex justify-between items-end flex-wrap gap-2">
+              <div class="flex gap-3 flex-wrap">
+                <button
+                  v-if="!notif.read"
+                  @click="handleMarkAsRead(notif.id)"
+                  class="text-sm flex items-center gap-1 text-blue-600 hover:underline"
+                  title="Tandai sebagai dibaca"
+                >
+                  <CheckCircle2 class="w-4 h-4" /> Tandai dibaca
+                </button>
+
+                <NuxtLink
+                  to="/orders"
+                  class="text-sm flex items-center gap-1 text-gray-700 hover:underline"
+                  title="Lihat detail pesanan"
+                >
+                  <Info class="w-4 h-4" /> Lihat Detail
+                </NuxtLink>
+
+                <button
+                  @click="handleDelete(notif.id)"
+                  class="text-sm flex items-center gap-1 text-red-500 hover:underline"
+                  title="Hapus notifikasi"
+                >
+                  <Trash2 class="w-4 h-4" /> Hapus
+                </button>
+              </div>
+
+              <span class="text-xs uppercase font-medium text-gray-500 ml-auto">
+                {{ notif.type }}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div class="flex flex-col items-end gap-2 mt-1">
-          <span class="text-xs text-gray-400 select-none whitespace-nowrap">
-            {{ formatRelativeDate(notif.createdAt) }}
-          </span>
-
-          <div class="flex gap-2">
-            <button
-              v-if="!notif.read"
-              @click="handleMarkAsRead(notif.id)"
-              class="text-sm flex items-center gap-1 text-blue-600 hover:underline"
-              title="Tandai sebagai dibaca"
-            >
-              <CheckCircle2 class="w-4 h-4" /> Tandai dibaca
-            </button>
-            <button
-              @click="handleDelete(notif.id)"
-              class="text-sm flex items-center gap-1 text-red-500 hover:underline"
-              title="Hapus notifikasi"
-            >
-              <Trash2 class="w-4 h-4" /> Hapus
-            </button>
-          </div>
-        </div>
       </div>
     </transition-group>
   </div>
