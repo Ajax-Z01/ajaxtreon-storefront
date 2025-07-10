@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCart } from '~/composables/useCart'
 import { useOrders } from '~/composables/useOrders'
-import type { CreateOrderPayload, ItemDetails } from '~/types/Order'
-import CartItem from '~/components/CartItem.vue'
 import { useCustomers } from '~/composables/useCustomers'
 import { getCurrentUserWithToken } from '~/composables/getCurrentUser'
+import { useToast } from '~/composables/useToast'
+
 import type { Customer } from '~/types/Customer'
+import type { CreateOrderPayload, ItemDetails } from '~/types/Order'
+
+import CartItem from '~/components/CartItem.vue'
 
 const { getCustomerByFirebaseUid, ensureToken } = useCustomers()
 const { addOrder } = useOrders()
+const { addToast } = useToast()
+const router = useRouter()
+
 const {
   cartItemsState,
   updateCartItem,
@@ -17,17 +24,17 @@ const {
   clearCart,
   subscribeCartItems
 } = useCart()
-const { addToast } = useToast() 
 
 const customer = ref<Customer | null>(null)
 const isCartReady = ref(false)
 const loading = ref(true)
+const checkoutLoading = ref(false)
 
 onMounted(async () => {
   try {
     await ensureToken()
     const { user } = await getCurrentUserWithToken()
-    if (!user || !user.uid) throw new Error('User is not authenticated')
+    if (!user?.uid) throw new Error('User not authenticated')
 
     const customerData = await getCustomerByFirebaseUid(user.uid)
     if (!customerData) throw new Error('Customer not found')
@@ -35,8 +42,8 @@ onMounted(async () => {
     customer.value = customerData
     isCartReady.value = true
   } catch (err: any) {
-    console.error('Gagal mengambil data customer:', err)
-    addToast('Gagal mengambil data customer. Silakan login ulang.', 'error')
+    console.error('Failed to fetch customer data:', err)
+    addToast('Failed to fetch customer data. Please re-login.', 'error')
   }
 })
 
@@ -45,37 +52,28 @@ onMounted(() => {
     cartItemsState.value = items
     loading.value = false
   })
-
   onUnmounted(() => {
     unsubscribe()
   })
 })
 
 const cartItems = computed(() => cartItemsState.value)
-const handleIncrease = (productId: string) => increaseQty(productId)
-const handleDecrease = (productId: string) => decreaseQty(productId)
-const handleRemove = (productId: string) => removeItem(productId)
 
-const increaseQty = (productId: string) => {
-  if (!productId) return
+const increaseQuantity = (productId: string) => {
   const item = cartItems.value.find(i => i.product?.id === productId)
   if (item) updateCartItem(productId, item.quantity + 1)
 }
 
-const decreaseQty = (productId: string) => {
-  if (!productId) return
+const decreaseQuantity = (productId: string) => {
   const item = cartItems.value.find(i => i.product?.id === productId)
   if (!item) return
 
-  if (item.quantity > 1) {
-    updateCartItem(productId, item.quantity - 1)
-  } else {
-    removeFromCart(productId)
-  }
+  item.quantity > 1
+    ? updateCartItem(productId, item.quantity - 1)
+    : removeFromCart(productId)
 }
 
 const removeItem = (productId: string) => {
-  if (!productId) return
   removeFromCart(productId)
 }
 
@@ -90,28 +88,25 @@ const formatPrice = (value: number) =>
   new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
-  }).format(value)  
+  }).format(value)
 
 const checkout = async () => {
+  if (checkoutLoading.value) return
+
   if (cartItems.value.length === 0) {
-    addToast('Keranjang kosong.', 'warning')
+    addToast('Your cart is empty.', 'warning')
     return
   }
 
-  if (!customer.value) {
-    addToast('Data pelanggan belum tersedia.', 'error')
+  if (!customer.value?.id) {
+    addToast('Customer data not found.', 'error')
     return
   }
 
-  const customerId = customer.value?.id
-
-  if (!customerId) {
-    addToast('Customer ID tidak tersedia', 'error')
-    return
-  }
+  checkoutLoading.value = true
 
   try {
-    const orderItems: ItemDetails[] = cartItems.value.map((item) => ({
+    const orderItems: ItemDetails[] = cartItems.value.map(item => ({
       id: item.product?.id ?? '',
       name: item.product?.name ?? '',
       price: item.product?.price ?? 0,
@@ -119,8 +114,8 @@ const checkout = async () => {
     }))
 
     const payload: CreateOrderPayload = {
-      customerId: customerId,
-      createdBy: customerId,
+      customerId: customer.value.id,
+      createdBy: customer.value.id,
       items: orderItems,
       discount: 0,
       tax: 0,
@@ -135,27 +130,27 @@ const checkout = async () => {
       }
     }
 
-    console.log('Creating order with payload:', payload)
-
     const result = await addOrder(payload)
 
     if (result?.paymentInfo?.redirect_url) {
       await clearCart()
       window.open(result.paymentInfo.redirect_url, '_blank')
-      addToast('Pesanan berhasil dibuat. Mengarahkan ke pembayaran...', 'success')
+      addToast('Order created. Redirecting to payment...', 'success')
     } else {
-      addToast('Pesanan berhasil dibuat, tetapi tidak ada link pembayaran.', 'info')
-      console.log('Payment Info:', result.paymentInfo)
+      addToast('Order created, but no payment link found.', 'info')
     }
+    
+    await router.push('/orders')
 
   } catch (error: any) {
-    console.error('Checkout error:', error)
-    if (error?.message && error.message.includes('E_INSUFFICIENT_STOCK')) {
-      addToast('Jumlah pesanan melebihi stok produk yang tersedia.', 'error')
+    console.error('Checkout failed:', error)
+    if (error?.message?.includes('E_INSUFFICIENT_STOCK')) {
+      addToast('Some items exceed available stock.', 'error')
+    } else {
+      addToast(error.message || 'Failed to create order.', 'error')
     }
-    else {
-      addToast(error.message || 'Gagal membuat pesanan.', 'error')
-    }
+  } finally {
+    checkoutLoading.value = false
   }
 }
 </script>
@@ -164,16 +159,20 @@ const checkout = async () => {
   <div class="max-w-4xl mx-auto p-6">
     <h1 class="text-2xl font-bold mb-4">Shopping Cart</h1>
 
-    <div v-if="!isCartReady">Loading customer data...</div>
-    <div v-else-if="cartItems.length === 0">Your cart is empty.</div>
+    <div v-if="!isCartReady" class="text-gray-500">Loading customer data...</div>
+
+    <div v-else-if="cartItems.length === 0" class="text-gray-600">
+      Your cart is empty.
+    </div>
+
     <div v-else class="space-y-4">
       <CartItem
         v-for="item in cartItems"
         :key="item.product?.id"
         :item="item"
-        @increase="handleIncrease"
-        @decrease="handleDecrease"
-        @remove="handleRemove"
+        @increase="increaseQuantity"
+        @decrease="decreaseQuantity"
+        @remove="removeItem"
       />
 
       <div class="flex justify-between items-center mt-6">
@@ -188,17 +187,39 @@ const checkout = async () => {
 
       <button
         @click="checkout"
-        class="bg-blue-600 text-white px-6 py-3 mt-4 rounded-lg hover:bg-blue-700 w-full"
+        :disabled="checkoutLoading"
+        class="w-full bg-blue-600 text-white px-6 py-3 mt-4 rounded-lg flex justify-center items-center gap-2 hover:bg-blue-700 transition-opacity"
+        :class="{ 'opacity-70 cursor-not-allowed': checkoutLoading }"
       >
-        Proceed to Checkout
+        <svg
+          v-if="checkoutLoading"
+          class="w-5 h-5 animate-spin text-white"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          />
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+          />
+        </svg>
+        {{ checkoutLoading ? 'Processing...' : 'Proceed to Checkout' }}
       </button>
-      
+
+      <NuxtLink
+        to="/orders"
+        class="block text-center bg-gray-200 text-gray-800 px-6 py-3 mt-2 rounded-lg hover:bg-gray-300 w-full"
+      >
+        View My Orders
+      </NuxtLink>
     </div>
-    <NuxtLink
-      to="/orders"
-      class="block text-center bg-gray-200 text-gray-800 px-6 py-3 mt-2 rounded-lg hover:bg-gray-300 w-full"
-    >
-      View My Orders
-    </NuxtLink>
   </div>
 </template>
