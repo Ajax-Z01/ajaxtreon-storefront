@@ -19,7 +19,6 @@ const paymentDetails = ref<Record<string, PaymentData | null>>({})
 const paymentLoading = ref<Record<string, boolean>>({})
 const paymentError = ref<Record<string, string | null>>({})
 
-
 const toggleDetails = async (orderId: string) => {
   if (expandedOrderId.value === orderId) {
     expandedOrderId.value = null
@@ -107,82 +106,97 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto p-6">
-    <h1 class="text-2xl font-bold mb-4">Daftar Pesanan</h1>
+  <div class="max-w-5xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">🧾 My Orders</h1>
 
-    <div v-if="loading">Memuat pesanan...</div>
-    <div v-else-if="error" class="text-red-500">{{ error }}</div>
-    <div v-else-if="orders.length === 0">Belum ada pesanan.</div>
-    <div v-else class="space-y-4">
+    <div v-if="loading" class="text-center text-gray-500">Loading your orders...</div>
+    <div v-else-if="error" class="text-center text-red-500">{{ error }}</div>
+    <div v-else-if="orders.length === 0" class="text-center text-gray-400">You have no orders yet.</div>
+
+    <div v-else class="space-y-6">
       <div
         v-for="order in orders"
         :key="order.id"
-        class="border rounded p-4 shadow-sm"
-        >
-        <div class="flex justify-between items-center mb-2">
-            <div>
-            <h2 class="font-semibold">Pesanan ID: {{ order.id }}</h2>
-            <div class="text-sm text-gray-500">
-                Tanggal: {{ new Date(order.createdAt).toLocaleDateString('id-ID') }}
+        class="border border-gray-200 rounded-xl shadow-sm p-6 relative bg-white"
+      >
+        <!-- Order Summary -->
+        <div class="flex justify-between items-start flex-wrap gap-4">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-800">Order #{{ order.id }}</h2>
+            <p class="text-sm text-gray-500">Placed on {{ new Date(order.createdAt).toLocaleDateString('id-ID') }}</p>
+          </div>
+
+          <div class="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <span
+              class="text-xs font-medium px-3 py-1 rounded-full"
+              :class="{
+                'bg-yellow-100 text-yellow-800': order.status === 'pending',
+                'bg-green-100 text-green-800': order.status === 'completed' || order.status === 'paid',
+                'bg-red-100 text-red-800': order.status === 'cancelled' || order.status === 'failed',
+                'bg-gray-100 text-gray-800': true
+              }"
+            >
+              {{ order.status.toUpperCase() }}
+            </span>
+            <div class="text-right font-semibold text-blue-600">
+              {{ formatPrice(calculateTotal(order)) }}
             </div>
-            </div>
-            <span class="text-sm bg-gray-200 rounded px-2 py-1">{{ order.status }}</span>
+          </div>
         </div>
 
-        <ul class="text-sm pl-4 list-disc">
-            <li
-            v-for="item in order.items"
-            :key="item.productId"
-            >
-            {{ item.productName || 'Produk' }} - {{ item.quantity }} x
-            {{ formatPrice(item.unitPrice) }}
-            </li>
+        <!-- Items -->
+        <ul class="mt-4 text-sm text-gray-700 space-y-1 pl-4 list-disc">
+          <li v-for="item in order.items" :key="item.productId">
+            {{ item.productName || 'Unnamed Product' }} — {{ item.quantity }} x {{ formatPrice(item.unitPrice) }}
+          </li>
         </ul>
 
-        <div class="mt-2 font-semibold">Total: {{ formatPrice(calculateTotal(order)) }}</div>
-
+        <!-- Toggle -->
         <button
-            @click="toggleDetails(order.id)"
-            class="mt-2 text-blue-600 hover:underline text-sm"
+          @click="toggleDetails(order.id)"
+          class="mt-4 text-blue-600 hover:underline text-sm"
         >
-            {{ expandedOrderId === order.id ? 'Sembunyikan Detail' : 'Lihat Detail' }}
+          {{ expandedOrderId === order.id ? 'Hide Details' : 'View Details' }}
         </button>
 
-        <div
-            v-if="expandedOrderId === order.id"
-            class="mt-3 bg-gray-50 rounded p-3 text-sm"
-            >
-            <p><strong>Metode Pembayaran:</strong> {{ order.paymentMethod || '-' }}</p>
+        <!-- Details Section -->
+        <div v-if="expandedOrderId === order.id" class="mt-6 border-t pt-4 text-sm space-y-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <p><strong>Payment Method:</strong> {{ order.paymentMethod || '-' }}</p>
             <p><strong>Payment ID:</strong> {{ order.paymentId || '-' }}</p>
-            <p><strong>Dibuat oleh:</strong> {{ order.createdBy || '-' }}</p>
-            <p><strong>Diskon:</strong> {{ formatPrice(order.discount || 0) }}</p>
-            <p><strong>Pajak:</strong> {{ formatPrice(order.tax || 0) }}</p>
-            <p><strong>Status Refund:</strong> {{ order.refundAmount ? `Telah direfund ${formatPrice(order.refundAmount)}` : 'Tidak ada refund' }}</p>
+            <p><strong>Created By:</strong> {{ order.createdBy || '-' }}</p>
+            <p><strong>Discount:</strong> {{ formatPrice(order.discount || 0) }}</p>
+            <p><strong>Tax:</strong> {{ formatPrice(order.tax || 0) }}</p>
+            <p>
+              <strong>Refund:</strong>
+              {{ order.refundAmount ? `Refunded ${formatPrice(order.refundAmount)}` : 'No refund' }}
+            </p>
+          </div>
 
-            <div class="mt-2 border-t pt-2">
-                <h3 class="font-semibold mb-1">Detail Pembayaran</h3>
+          <!-- Payment Details -->
+          <div class="mt-4">
+            <h3 class="font-semibold text-gray-800 mb-2">💳 Payment Info</h3>
+            <div v-if="paymentLoading[order.id]" class="text-gray-500">Loading payment details...</div>
+            <div v-else-if="paymentError[order.id]" class="text-red-500">{{ paymentError[order.id] }}</div>
+            <div v-else-if="paymentDetails[order.id]">
+              <p><strong>Status:</strong> {{ paymentDetails[order.id]?.status || '-' }}</p>
+              <p><strong>Amount Paid:</strong> {{ formatPrice(paymentDetails[order.id]?.amount || 0) }}</p>
+              <p><strong>Paid At:</strong> {{ formatDateSafe(paymentDetails[order.id]?.paidAt) }}</p>
+              <p><strong>Method:</strong> {{ paymentDetails[order.id]?.method || '-' }}</p>
+              <p><strong>Note:</strong> {{ paymentDetails[order.id]?.note || '-' }}</p>
 
-                <div v-if="paymentLoading[order.id]">Memuat detail pembayaran...</div>
-                <div v-else-if="paymentError[order.id]" class="text-red-500">{{ paymentError[order.id] }}</div>
-                <div v-else-if="paymentDetails[order.id]">
-                    <p><strong>Status:</strong> {{ paymentDetails[order.id]?.status || '-' }}</p>
-                    <p><strong>Jumlah Dibayar:</strong> {{ formatPrice(paymentDetails[order.id]?.amount || 0) }}</p>
-                    <p><strong>Tanggal Pembayaran:</strong> {{ formatDateSafe(paymentDetails[order.id]?.paidAt) }}</p>
-                    <p><strong>Metode:</strong> {{ paymentDetails[order.id]?.method || '-' }}</p>
-                    <p><strong>Catatan:</strong> {{ paymentDetails[order.id]?.note || '-' }}</p>
-
-                    <button
-                    v-if="paymentDetails[order.id]?.status !== 'paid'"
-                    @click="continuePayment(order.id)"
-                    class="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                    Lanjutkan Pembayaran
-                    </button>
-                </div>
-                <div v-else>
-                    <p>Tidak ada detail pembayaran.</p>
-                </div>
+              <button
+                v-if="paymentDetails[order.id]?.status !== 'paid'"
+                @click="continuePayment(order.id)"
+                class="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              >
+                Continue Payment
+              </button>
             </div>
+            <div v-else class="text-gray-500">
+              No payment details available.
+            </div>
+          </div>
         </div>
       </div>
     </div>

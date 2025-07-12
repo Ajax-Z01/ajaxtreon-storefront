@@ -1,6 +1,6 @@
 import type { MidtransCustomerDetails } from './Payment'
 
-export type OrderStatus = 'pending' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'completed' | 'cancelled' | 'refunded' | 'failed' | 'processing' | 'on_hold' | 'paid';
 
 export interface OrderItem {
   productId: string;

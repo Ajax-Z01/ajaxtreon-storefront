@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
-import { useRouter } from 'vue-router'
 import { useProducts } from '~/composables/useProducts'
 import { useCategories } from '~/composables/useCategories'
 import { useCart } from '~/composables/useCart'
@@ -27,7 +26,6 @@ const categoryMap = computed(() => {
   return map
 })
 
-const router = useRouter()
 const isLoggedIn = ref(false)
 const isAuthReady = ref(false)
 const { addToast } = useToast()
@@ -81,9 +79,14 @@ onMounted(() => {
       <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center flex justify-center items-center gap-2">
         <Package class="w-6 h-6" /> Featured Products
       </h2>
-
+      
       <div v-if="loading" class="grid gap-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        <!-- Skeleton loaders here -->
+        <div v-for="i in 8" :key="i" class="animate-pulse bg-white rounded-2xl p-5 border">
+          <div class="h-48 bg-gray-200 rounded mb-4"></div>
+          <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+          <div class="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+          <div class="h-4 bg-gray-200 rounded w-full"></div>
+        </div>
       </div>
 
       <div v-else-if="filteredProducts.length === 0" class="text-center text-gray-500 py-10">
