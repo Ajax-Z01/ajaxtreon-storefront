@@ -156,70 +156,89 @@ const checkout = async () => {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto p-6">
-    <h1 class="text-2xl font-bold mb-4">Shopping Cart</h1>
+  <div class="max-w-5xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">🛒 Your Shopping Cart</h1>
 
-    <div v-if="!isCartReady" class="text-gray-500">Loading customer data...</div>
-
-    <div v-else-if="cartItems.length === 0" class="text-gray-600">
-      Your cart is empty.
+    <!-- Loading customer -->
+    <div v-if="!isCartReady" class="text-gray-500 text-center py-10 animate-pulse">
+      Loading customer data...
     </div>
 
-    <div v-else class="space-y-4">
-      <CartItem
-        v-for="item in cartItems"
-        :key="item.product?.id"
-        :item="item"
-        @increase="increaseQuantity"
-        @decrease="decreaseQuantity"
-        @remove="removeItem"
-      />
+    <!-- Empty cart -->
+    <div v-else-if="cartItems.length === 0" class="text-center text-gray-500 py-20">
+      <p class="text-xl mb-4">Your cart is currently empty.</p>
+      <NuxtLink
+        to="/"
+        class="inline-block bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition"
+      >
+        Continue Shopping
+      </NuxtLink>
+    </div>
 
-      <div class="flex justify-between items-center mt-6">
-        <button
-          @click="clearCart"
-          class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-        >
-          Clear Cart
-        </button>
-        <div class="text-xl font-semibold">Total: {{ formatPrice(totalPrice) }}</div>
+    <!-- Cart items -->
+    <div v-else>
+      <div class="grid gap-6">
+        <CartItem
+          v-for="item in cartItems"
+          :key="item.product?.id"
+          :item="item"
+          @increase="increaseQuantity"
+          @decrease="decreaseQuantity"
+          @remove="removeItem"
+        />
       </div>
 
-      <button
-        @click="checkout"
-        :disabled="checkoutLoading"
-        class="w-full bg-blue-600 text-white px-6 py-3 mt-4 rounded-lg flex justify-center items-center gap-2 hover:bg-blue-700 transition-opacity"
-        :class="{ 'opacity-70 cursor-not-allowed': checkoutLoading }"
-      >
-        <svg
-          v-if="checkoutLoading"
-          class="w-5 h-5 animate-spin text-white"
-          fill="none"
-          viewBox="0 0 24 24"
+      <!-- Action Bar -->
+      <div class="mt-10 border-t pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <button
+          @click="clearCart"
+          class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-full text-sm transition"
         >
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          />
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-          />
-        </svg>
-        {{ checkoutLoading ? 'Processing...' : 'Proceed to Checkout' }}
-      </button>
+          🗑️ Clear Cart
+        </button>
 
-      <NuxtLink
-        to="/orders"
-        class="block text-center bg-gray-200 text-gray-800 px-6 py-3 mt-2 rounded-lg hover:bg-gray-300 w-full"
-      >
-        View My Orders
-      </NuxtLink>
+        <div class="text-xl font-semibold text-gray-800">
+          Total: {{ formatPrice(totalPrice) }}
+        </div>
+      </div>
+
+      <!-- Checkout button -->
+      <div class="mt-6">
+        <button
+          @click="checkout"
+          :disabled="checkoutLoading"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-full text-lg font-semibold flex justify-center items-center gap-2 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          <svg
+            v-if="checkoutLoading"
+            class="w-5 h-5 animate-spin text-white"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            />
+          </svg>
+          {{ checkoutLoading ? 'Processing...' : '✅ Proceed to Checkout' }}
+        </button>
+
+        <NuxtLink
+          to="/orders"
+          class="block text-center mt-3 text-blue-600 hover:underline text-sm"
+        >
+          View My Orders
+        </NuxtLink>
+      </div>
     </div>
   </div>
 </template>

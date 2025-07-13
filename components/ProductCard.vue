@@ -5,6 +5,7 @@ import type { Product } from '~/types/Product'
 defineProps<{
   product: Product
   categoryName: string
+  isLoading?: boolean
 }>()
 
 defineEmits(['addToCart'])
@@ -36,12 +37,20 @@ defineEmits(['addToCart'])
 
     <div class="px-5 pb-5">
       <button
-        :disabled="product.stock <= 0"
+        :disabled="product.stock <= 0 || isLoading"
         @click.stop="$emit('addToCart', product.id)"
-        class="mt-2 w-full inline-flex items-center justify-center gap-2 bg-blue-600 text-white py-2 rounded-full hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+        class="mt-2 w-full bg-blue-600 text-white py-2 rounded-full hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed flex justify-center items-center gap-2"
       >
-        <ShoppingCart class="w-4 h-4" />
-        {{ product.stock > 0 ? 'Add to Cart' : 'Out of Stock' }}
+        <template v-if="isLoading">
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 4v1m0 14v1m8.66-8.66l-.7.7M5.34 5.34l-.7.7m13.72 0l.7.7M5.34 18.66l.7.7M4 12h1m14 0h1" />
+          </svg>
+          Loading...
+        </template>
+        <template v-else>
+          {{ product.stock > 0 ? 'Add to Cart' : 'Out of Stock' }}
+        </template>
       </button>
     </div>
   </div>

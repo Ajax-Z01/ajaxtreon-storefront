@@ -30,6 +30,7 @@ const isLoggedIn = ref(false)
 const isAuthReady = ref(false)
 const { addToast } = useToast()
 const selectedCategoryId = ref<string | null>(null)
+const loadingProductIds = ref<Set<string>>(new Set())
 
 const filteredProducts = computed(() => {
   if (!selectedCategoryId.value) return products.value || []
@@ -46,12 +47,18 @@ const handleAddToCart = async (productId: string) => {
     return
   }
 
+  if (loadingProductIds.value.has(productId)) return
+
+  loadingProductIds.value.add(productId)
+
   try {
     await addToCart(productId, 1)
     addToast('Added to cart!', 'success')
   } catch (error) {
     console.error('Failed to add to cart:', error)
     addToast('Failed to add to cart.', 'error')
+  } finally {
+    loadingProductIds.value.delete(productId)
   }
 }
 
@@ -99,6 +106,7 @@ onMounted(() => {
           :key="product.id"
           :product="product"
           :categoryName="categoryMap[product.categoryId] || 'Uncategorized'"
+          :isLoading="loadingProductIds.has(product.id)"
           @addToCart="handleAddToCart"
         />
       </div>

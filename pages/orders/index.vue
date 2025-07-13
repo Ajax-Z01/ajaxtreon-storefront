@@ -50,13 +50,19 @@ const toggleDetails = async (orderId: string) => {
   }
 }
 
-
 const formatPrice = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value)
 
 const formatDateSafe = (value: Date | null | undefined): string => {
   if (!value) return '-'
   return new Date(value).toLocaleString('id-ID')
 }
+
+const sortedOrders = computed(() => {
+  return [...orders.value].sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
+})
+
 
 const calculateTotal = (order: Order): number => {
   const subtotal = order.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
@@ -115,7 +121,7 @@ onMounted(async () => {
 
     <div v-else class="space-y-6">
       <div
-        v-for="order in orders"
+        v-for="order in sortedOrders"
         :key="order.id"
         class="border border-gray-200 rounded-xl shadow-sm p-6 relative bg-white"
       >
