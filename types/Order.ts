@@ -50,6 +50,7 @@ export interface ItemDetails {
 export interface CreateOrderPayload {
   items: ItemDetails[];
   customerId: string;
+  userId: string;
   createdBy: string;
   customer: MidtransCustomerDetails;
   paymentMethod?: string;

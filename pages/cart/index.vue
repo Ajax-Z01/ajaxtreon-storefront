@@ -115,6 +115,7 @@ const checkout = async () => {
 
     const payload: CreateOrderPayload = {
       customerId: customer.value.id,
+      userId: customer.value.firebaseUid,
       createdBy: customer.value.id,
       items: orderItems,
       discount: 0,
