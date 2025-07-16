@@ -11,6 +11,7 @@ import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import type { Seller } from '~/types/Seller'
 
 import {
+  LoaderCircle,
   ArrowLeft,
   Info,
   Layers,
@@ -36,6 +37,8 @@ const { addToast } = useToast()
 // Auth state (client-only)
 const isLoggedIn = ref(false)
 const isAuthReady = ref(false)
+
+const addingToCart = ref(false)
 
 const auth = getAuth()
 onAuthStateChanged(auth, (user) => {
@@ -121,12 +124,15 @@ const handleAddToCart = async () => {
   }
   if (!product.value) return
 
+  addingToCart.value = true
   try {
     await addToCart(product.value.id, 1)
     addToast('Produk berhasil ditambahkan ke keranjang.', 'success')
   } catch (err) {
     console.error(err)
     addToast('Gagal menambahkan ke keranjang.', 'error')
+  } finally {
+    addingToCart.value = false
   }
 }
 </script>
@@ -143,9 +149,9 @@ const handleAddToCart = async () => {
     </button>
 
     <!-- Loading -->
-    <div v-if="loading" class="text-center text-gray-500 flex items-center justify-center gap-2">
-      <Info class="w-4 h-4" />
-      Memuat produk...
+    <div v-if="loading" class="text-center text-gray-500 flex flex-col items-center justify-center py-16">
+      <LoaderCircle class="w-6 h-6 animate-spin mb-2" />
+      <span>Memuat produk...</span>
     </div>
 
     <!-- Product Detail -->
@@ -170,11 +176,13 @@ const handleAddToCart = async () => {
         </div>
 
         <!-- Seller -->
-        <div v-if="loadingSeller" class="text-sm text-gray-500">Memuat penjual...</div>
+        <div v-if="loadingSeller" class="flex items-center gap-2 text-sm text-gray-500">
+          <LoaderCircle class="w-4 h-4 animate-spin" />
+          <span>Memuat penjual...</span>
+        </div>
         <div v-else-if="seller" class="flex items-center gap-2 text-sm text-gray-600">
           <Store class="w-4 h-4" />
-          <span>
-            Dijual oleh: 
+          <span>Dijual oleh: 
             <span class="font-medium text-gray-800">
               {{ seller.storeName || seller.name }}
             </span>
@@ -223,11 +231,33 @@ const handleAddToCart = async () => {
         <button
           v-if="isAuthReady"
           @click="handleAddToCart"
-          :disabled="product.stock <= 0"
+          :disabled="product.stock <= 0 || addingToCart"
           class="mt-6 w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          <ShoppingCart class="w-5 h-5" />
-          {{ product.stock > 0 ? 'Tambah ke Keranjang' : 'Stok Habis' }}
+          <svg
+            v-if="addingToCart"
+            class="w-5 h-5 animate-spin"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            />
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            />
+          </svg>
+          <ShoppingCart v-else class="w-5 h-5" />
+          <span>
+            {{ addingToCart ? 'Menambahkan...' : (product.stock > 0 ? 'Tambah ke Keranjang' : 'Stok Habis') }}
+          </span>
         </button>
       </div>
     </div>

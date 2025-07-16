@@ -7,6 +7,8 @@ import { useCustomers } from '~/composables/useCustomers'
 import { getCurrentUserWithToken } from '~/composables/getCurrentUser'
 import { useToast } from '~/composables/useToast'
 
+import { ShoppingCart, Trash2, LoaderCircle, ArrowRight } from 'lucide-vue-next'
+
 import type { Customer } from '~/types/Customer'
 import type { CreateOrderPayload, ItemDetails } from '~/types/Order'
 
@@ -140,7 +142,7 @@ const checkout = async () => {
     } else {
       addToast('Order created, but no payment link found.', 'info')
     }
-    
+
     await router.push('/orders')
 
   } catch (error: any) {
@@ -158,14 +160,15 @@ const checkout = async () => {
 
 <template>
   <div class="max-w-5xl mx-auto px-4 py-10">
-    <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">🛒 Your Shopping Cart</h1>
+    <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center flex items-center justify-center gap-2">
+      <ShoppingCart class="w-6 h-6" />
+      Your Shopping Cart
+    </h1>
 
-    <!-- Loading customer -->
     <div v-if="!isCartReady" class="text-gray-500 text-center py-10 animate-pulse">
       Loading customer data...
     </div>
 
-    <!-- Empty cart -->
     <div v-else-if="cartItems.length === 0" class="text-center text-gray-500 py-20">
       <p class="text-xl mb-4">Your cart is currently empty.</p>
       <NuxtLink
@@ -176,7 +179,6 @@ const checkout = async () => {
       </NuxtLink>
     </div>
 
-    <!-- Cart items -->
     <div v-else>
       <div class="grid gap-6">
         <CartItem
@@ -195,7 +197,8 @@ const checkout = async () => {
           @click="clearCart"
           class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-full text-sm transition"
         >
-          🗑️ Clear Cart
+          <Trash2 class="w-4 h-4 inline-block mr-2" />
+          Clear Cart
         </button>
 
         <div class="text-xl font-semibold text-gray-800">
@@ -203,34 +206,19 @@ const checkout = async () => {
         </div>
       </div>
 
-      <!-- Checkout button -->
+      <!-- Checkout Button -->
       <div class="mt-6">
         <button
           @click="checkout"
           :disabled="checkoutLoading"
           class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-full text-lg font-semibold flex justify-center items-center gap-2 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          <svg
+          <LoaderCircle
             v-if="checkoutLoading"
-            class="w-5 h-5 animate-spin text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            />
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-            />
-          </svg>
-          {{ checkoutLoading ? 'Processing...' : '✅ Proceed to Checkout' }}
+            class="w-5 h-5 animate-spin"
+          />
+          <ArrowRight v-else class="w-5 h-5" />
+          {{ checkoutLoading ? 'Processing...' : 'Proceed to Checkout' }}
         </button>
 
         <NuxtLink

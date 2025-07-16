@@ -157,58 +157,7 @@ onUnmounted(() => {
           <span v-if="cartCount > 0" class="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
             {{ cartCount }}
           </span>
-        </button>
-
-        <!-- Notification Dropdown -->
-        <div class="relative">
-          <button @click.stop="toggleNotificationDropdown" class="relative hover:text-blue-600" :class="{ 'text-blue-700 font-semibold': props.route.path === '/notifications' }">
-            <Bell class="inline-block w-5 h-5" />
-            <span v-if="unreadCount > 0" class="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {{ unreadCount }}
-            </span>
-          </button>
-
-          <!-- Dropdown Content -->
-          <div
-            v-if="showNotificationDropdown"
-            class="notification-dropdown absolute right-0 mt-2 w-80 bg-white shadow-lg border rounded-lg z-50"
-          >
-            <div class="p-3 border-b font-semibold text-sm text-gray-700">Notifikasi Terbaru</div>
-            <ul class="max-h-64 overflow-y-auto divide-y">
-              <li
-                v-for="notif in recentNotifications"
-                :key="notif.id"
-                class="px-4 py-2 text-sm cursor-pointer hover:bg-gray-50"
-                :class="notif.read ? 'text-gray-600' : 'bg-blue-50 text-blue-800 font-semibold'"
-                @click="() => handleMarkAsRead(notif.id)"
-              >
-                <div class="flex justify-between items-start">
-                  <div>
-                    <div>{{ notif.title }}</div>
-                    <div class="text-xs text-gray-500">{{ formatRelativeDate(notif.createdAt) }}</div>
-                  </div>
-                  <span
-                    v-if="!notif.read"
-                    class="ml-2 mt-1 inline-block w-2 h-2 rounded-full bg-blue-500"
-                    title="Belum dibaca"
-                  />
-                </div>
-              </li>
-
-              <li
-                v-if="recentNotifications.length === 0"
-                class="px-4 py-3 text-center text-sm text-gray-500"
-              >
-                Tidak ada notifikasi.
-              </li>
-            </ul>
-            <div class="border-t px-4 py-2">
-              <button class="text-sm text-blue-600 hover:underline w-full text-left" @click="() => { router.push('/notifications'); showNotificationDropdown = false }">
-                Lihat semua notifikasi →
-              </button>
-            </div>
-          </div>
-        </div>
+        </button> 
 
         <!-- Auth Actions -->
         <template v-if="!props.isAuthenticated">
@@ -217,6 +166,56 @@ onUnmounted(() => {
           </NuxtLink>
         </template>
         <template v-else>
+          <!-- Notification Dropdown -->
+          <div class="relative">
+            <button @click.stop="toggleNotificationDropdown" class="relative hover:text-blue-600" :class="{ 'text-blue-700 font-semibold': props.route.path === '/notifications' }">
+              <Bell class="inline-block w-5 h-5" />
+              <span v-if="unreadCount > 0" class="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {{ unreadCount }}
+              </span>
+            </button>
+
+            <!-- Dropdown Content -->
+            <div
+              v-if="showNotificationDropdown"
+              class="notification-dropdown absolute right-0 mt-2 w-80 bg-white shadow-lg border rounded-lg z-50"
+            >
+              <div class="p-3 border-b font-semibold text-sm text-gray-700">Notifikasi Terbaru</div>
+              <ul class="max-h-64 overflow-y-auto divide-y">
+                <li
+                  v-for="notif in recentNotifications"
+                  :key="notif.id"
+                  class="px-4 py-2 text-sm cursor-pointer hover:bg-gray-50"
+                  :class="notif.read ? 'text-gray-600' : 'bg-blue-50 text-blue-800 font-semibold'"
+                  @click="() => handleMarkAsRead(notif.id)"
+                >
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <div>{{ notif.title }}</div>
+                      <div class="text-xs text-gray-500">{{ formatRelativeDate(notif.createdAt) }}</div>
+                    </div>
+                    <span
+                      v-if="!notif.read"
+                      class="ml-2 mt-1 inline-block w-2 h-2 rounded-full bg-blue-500"
+                      title="Belum dibaca"
+                    />
+                  </div>
+                </li>
+
+                <li
+                  v-if="recentNotifications.length === 0"
+                  class="px-4 py-3 text-center text-sm text-gray-500"
+                >
+                  Tidak ada notifikasi.
+                </li>
+              </ul>
+              <div class="border-t px-4 py-2">
+                <button class="text-sm text-blue-600 hover:underline w-full text-left" @click="() => { router.push('/notifications'); showNotificationDropdown = false }">
+                  Lihat semua notifikasi →
+                </button>
+              </div>
+            </div>
+          </div>
           <NuxtLink to="/profile" class="flex items-center gap-2 hover:text-blue-600 transition">
             <User class="w-4 h-4" />
             <span>My Account</span>
