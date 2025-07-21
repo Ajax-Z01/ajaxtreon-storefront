@@ -180,10 +180,15 @@ const handleAddToCart = async () => {
           <LoaderCircle class="w-4 h-4 animate-spin" />
           <span>Memuat penjual...</span>
         </div>
-        <div v-else-if="seller" class="flex items-center gap-2 text-sm text-gray-600">
+        <div
+          v-else-if="seller"
+          class="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition cursor-pointer"
+          @click="router.push(`/sellers/${seller.firebaseUid}`)"
+        >
           <Store class="w-4 h-4" />
-          <span>Dijual oleh: 
-            <span class="font-medium text-gray-800">
+          <span>
+            Dijual oleh:
+            <span class="font-medium text-gray-800 underline">
               {{ seller.storeName || seller.name }}
             </span>
           </span>
