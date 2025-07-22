@@ -1,31 +1,25 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSellers } from '~/composables/useSellers'
+import { useProducts } from '~/composables/useProducts'
+import { useCategories } from '~/composables/useCategories'
 import type { Seller } from '~/types/Seller'
+import type { Product } from '~/types/Product'
+import type { Category } from '~/types/Category'
+import ProductCard from '~/components/ProductCard.vue'
 import {
-  Globe,
-  Mail,
-  Phone,
-  MapPin,
-  ShieldCheck,
-  Store,
-  Facebook,
-  Instagram,
-  Twitter,
-  Linkedin,
-  LoaderCircle,
-  Star, 
-  StarHalf, 
-  StarOff
+  Globe, Mail, Phone, MapPin, ShieldCheck,
+  Facebook, Instagram, Twitter, Linkedin,
+  Star, StarHalf, StarOff, XCircle
 } from 'lucide-vue-next'
 
 const route = useRoute()
 const { getSellerByFirebaseUid } = useSellers()
-const sellerId = route.params.id as string
+const { getProductsByCreatedBy } = useProducts()
+const { getCategories } = useCategories()
 
-const seller = ref<Seller | null>(null)
-const loading = ref(true)
+const sellerId = route.params.id as string
 
 const platformIcons: Record<string, any> = {
   facebook: Facebook,
@@ -52,44 +46,67 @@ function getStarIcons(rating: number) {
   return stars
 }
 
-onMounted(async () => {
-  try {
-    seller.value = await getSellerByFirebaseUid(sellerId)
-  } catch (e) {
-    console.error('Failed to load seller:', e)
-  } finally {
-    loading.value = false
+const { data: seller, pending: loadingSeller } = await useAsyncData<Seller | null>('seller', () =>
+  getSellerByFirebaseUid(sellerId)
+)
+
+const { data: products, pending: loadingProducts } = await useAsyncData<Product[]>('seller-products', () =>
+  getProductsByCreatedBy(sellerId)
+)
+
+const { data: categories, pending: loadingCategories } = await useAsyncData<Category[]>('categories', () => getCategories())
+
+const categoryMap = computed(() => {
+  const map: Record<string, string> = {}
+  categories.value?.forEach(category => {
+    map[category.id] = category.name
+  })
+  return map
+})
+
+const lastUpdated = computed(() => {
+  const updated = seller.value?.updatedAt as { _seconds: number } | undefined
+  if (updated?._seconds) {
+    return new Date(updated._seconds * 1000).toLocaleString()
   }
+  return 'Unknown'
 })
 </script>
 
 <template>
   <div class="max-w-5xl mx-auto py-10 px-4">
-    <div v-if="loading" class="text-center text-gray-500 flex justify-center items-center gap-2">
-      <LoaderCircle class="animate-spin w-4 h-4" />
-      Loading seller...
+    <div v-if="loadingSeller" class="space-y-6 animate-pulse">
+      <div class="h-48 sm:h-64 bg-gray-200 rounded-md"></div>
+      <div class="h-6 bg-gray-300 w-1/2 rounded"></div>
+      <div class="h-4 bg-gray-300 w-1/3 rounded"></div>
+      <div class="h-4 bg-gray-300 w-3/4 rounded"></div>
     </div>
 
-    <div v-else-if="seller" class="space-y-10">
-      <!-- Banner & Logo -->
-      <div class="relative h-48 sm:h-64 rounded-md overflow-hidden border">
-        <img
-          :src="seller.storeBannerUrl || 'https://via.placeholder.com/1024x300?text=No+Banner'"
-          class="object-cover w-full h-full"
-          alt="Store Banner"
-        />
-        <div class="absolute -bottom-10 left-6 z-10">
+    <div v-if="seller" class="space-y-10 transition-opacity duration-300 ease-in-out" :class="{ 'opacity-0': loadingSeller, 'opacity-100': !loadingSeller }">
+      <!-- Banner wrapper (NO overflow-hidden) -->
+      <div class="relative">
+        <!-- Banner -->
+        <div class="h-48 sm:h-64 rounded-md border bg-gray-100 overflow-hidden">
+          <img
+            :src="seller.storeBannerUrl || 'https://via.placeholder.com/1024x300?text=No+Banner'"
+            alt="Store Banner"
+            class="w-full h-full object-cover"
+          />
+        </div>
+
+        <!-- Logo (absolute and outside banner) -->
+        <div class="absolute -bottom-12 left-6 sm:left-10 z-10">
           <img
             :src="seller.storeLogoUrl || 'https://via.placeholder.com/100?text=Logo'"
-            class="w-24 h-24 rounded-full border-4 border-white bg-white object-cover"
             alt="Store Logo"
+            class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white object-cover bg-white shadow-lg"
           />
         </div>
       </div>
-
-      <div class="mt-14">
+      
+      <div class="pt-4">
         <h1 class="text-3xl font-bold">{{ seller.storeName || seller.name }}</h1>
-        <div class="flex items-center gap-1 mt-2">
+        <div class="flex flex-wrap items-center gap-1 mt-2">
           <template v-for="(type, index) in getStarIcons(seller.ratingAverage || 0)" :key="index">
             <Star v-if="type === 'full'" class="w-4 h-4 text-yellow-400" />
             <StarHalf v-else-if="type === 'half'" class="w-4 h-4 text-yellow-400" />
@@ -98,11 +115,14 @@ onMounted(async () => {
           <span class="ml-2 text-sm text-gray-600">({{ seller.ratingAverage?.toFixed(1) || '0.0' }} / 5)</span>
           <span class="text-xs text-gray-400">from {{ seller.ratingCount || 0 }} reviews</span>
         </div>
-        <p class="text-gray-600">{{ seller.storeDescription || 'No description provided.' }}</p>
+        <p class="prose max-w-none text-gray-600 mt-4">{{ seller.storeDescription || 'No description provided' }}</p>
 
         <div class="mt-4 flex items-center gap-4 text-sm text-gray-500">
           <span class="flex items-center gap-1">
-            <ShieldCheck class="w-4 h-4 text-green-500" />
+            <component
+              :is="seller.isVerified ? ShieldCheck : XCircle"
+              :class="seller.isVerified ? 'w-4 h-4 text-green-500' : 'w-4 h-4 text-red-500'"
+            />
             {{ seller.isVerified ? 'Verified' : 'Unverified' }}
           </span>
           <span class="capitalize">
@@ -132,7 +152,7 @@ onMounted(async () => {
                 target="_blank"
                 class="flex items-center gap-1 text-blue-600 hover:underline text-sm"
               >
-                <component :is="platformIcons[key]" class="w-4 h-4" />
+                <component v-if="platformIcons[key]" :is="platformIcons[key]" class="w-4 h-4" />
                 {{ key }}
               </a>
             </div>
@@ -156,10 +176,31 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+      
+      <section class="mt-12">
+        <h2 class="text-2xl font-semibold mb-6">Products by {{ seller.storeName || seller.name }}</h2>
+
+        <div v-if="loadingProducts" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div v-for="i in 6" :key="i" class="animate-pulse bg-white rounded-2xl p-5 border h-72"></div>
+        </div>
+
+        <div v-else-if="products && products.length === 0" class="text-gray-500">
+          No products found for this seller.
+        </div>
+
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <ProductCard
+            v-for="product in products"
+            :key="product.id"
+            :product="product"
+            :categoryName="categoryMap[product.categoryId] || 'Uncategorized'"
+          />
+        </div>
+      </section>
 
       <!-- Metadata -->
       <div class="text-xs text-gray-400 text-right">
-        Last updated: {{ new Date(seller.updatedAt).toLocaleString() }}
+        Last updated: {{ lastUpdated }}
       </div>
     </div>
 

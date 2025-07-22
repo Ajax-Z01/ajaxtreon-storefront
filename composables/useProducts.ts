@@ -42,6 +42,20 @@ export const useProducts = () => {
 
     return data.value as Product
   }
+  
+  const getProductsByCreatedBy = async (createdBy: string): Promise<Product[]> => {
+  const url = `${baseUrl}/inventory/product?createdBy=${encodeURIComponent(createdBy)}`
+  const { data, error } = await useFetch<Product[]>(url, {
+    method: 'GET',
+    headers: getHeaders(),
+  })
+
+  if (error.value) {
+    throw createError({ statusCode: 500, message: 'Failed to fetch products by createdBy' })
+  }
+
+  return data.value || []
+}
 
   const addProduct = async (product: CreateProductPayload): Promise<string> => {
     const { data, error } = await useFetch<{ id: string }>(`${baseUrl}/inventory/product`, {
@@ -83,6 +97,7 @@ export const useProducts = () => {
   return {
     getProducts,
     getProductById,
+    getProductsByCreatedBy,
     addProduct,
     updateProduct,
     deleteProduct

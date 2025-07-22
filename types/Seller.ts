@@ -48,6 +48,6 @@ export interface Seller {
   paymentMethods?: string[];
 
   // Metadata (frontend expect string or Date, backend Timestamp)
-  createdAt: string | Date;
-  updatedAt: string | Date;
+  createdAt: { _seconds: number; _nanoseconds: number } | string | Date
+  updatedAt: { _seconds: number; _nanoseconds: number } | string | Date
 }

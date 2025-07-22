@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useOrders } from '~/composables/useOrders'
 import { useCustomers } from '~/composables/useCustomers'
 import { getCurrentUserWithToken } from '~/composables/getCurrentUser'
@@ -7,17 +7,33 @@ import { usePayment } from '~/composables/usePayments'
 import type { Order } from '~/types/Order'
 import type { PaymentData } from '~/types/Payment'
 
+import { FileText, CreditCard } from 'lucide-vue-next'
+
 const { getCustomerByFirebaseUid, ensureToken } = useCustomers()
 const { getOrdersByCustomer } = useOrders()
 const { getPaymentById } = usePayment()
 
-const orders = ref<Order[]>([])
-const loading = ref(true)
-const error = ref<string | null>(null)
 const expandedOrderId = ref<string | null>(null)
 const paymentDetails = ref<Record<string, PaymentData | null>>({})
 const paymentLoading = ref<Record<string, boolean>>({})
 const paymentError = ref<Record<string, string | null>>({})
+
+const fetchOrders = async (): Promise<Order[]> => {
+  await ensureToken()
+  const { user } = await getCurrentUserWithToken()
+  if (!user || !user.uid) throw new Error('User not authenticated')
+
+  const customer = await getCustomerByFirebaseUid(user.uid)
+  if (!customer || !customer.id) throw new Error('Customer not found')
+
+  const orders = await getOrdersByCustomer(customer.id)
+  return orders
+}
+
+const { data: orders, pending: loading, error } = await useAsyncData<Order[]>(
+  'orders',
+  fetchOrders
+)
 
 const toggleDetails = async (orderId: string) => {
   if (expandedOrderId.value === orderId) {
@@ -26,13 +42,13 @@ const toggleDetails = async (orderId: string) => {
   }
 
   expandedOrderId.value = orderId
-  
+
   if (!paymentDetails.value[orderId]) {
     try {
       paymentLoading.value[orderId] = true
       paymentError.value[orderId] = null
 
-      const order = orders.value.find(o => o.id === orderId)
+      const order = orders.value?.find(o => o.id === orderId)
       if (!order || !order.paymentId) {
         paymentError.value[orderId] = 'Payment ID tidak ditemukan'
         paymentDetails.value[orderId] = null
@@ -50,7 +66,8 @@ const toggleDetails = async (orderId: string) => {
   }
 }
 
-const formatPrice = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value)
+const formatPrice = (value: number) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value)
 
 const formatDateSafe = (value: Date | null | undefined): string => {
   if (!value) return '-'
@@ -58,11 +75,11 @@ const formatDateSafe = (value: Date | null | undefined): string => {
 }
 
 const sortedOrders = computed(() => {
+  if (!orders.value) return []
   return [...orders.value].sort((a, b) => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
 })
-
 
 const calculateTotal = (order: Order): number => {
   const subtotal = order.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
@@ -72,11 +89,7 @@ const calculateTotal = (order: Order): number => {
 }
 
 const continuePayment = (orderId: string) => {
-  console.log('Order ID clicked:', orderId)
-  console.log('Available payment keys:', Object.keys(paymentDetails.value))
-
   const payment = paymentDetails.value[orderId]
-  console.log('Payment found:', payment)
 
   if (!payment) {
     alert('Data pembayaran tidak ditemukan.')
@@ -91,33 +104,18 @@ const continuePayment = (orderId: string) => {
     alert('Link pembayaran tidak tersedia.')
   }
 }
-
-onMounted(async () => {
-  try {
-    await ensureToken()
-    const { user } = await getCurrentUserWithToken()
-    if (!user || !user.uid) throw new Error('User not authenticated')
-
-    const customer = await getCustomerByFirebaseUid(user.uid)
-    if (!customer || !customer.id) throw new Error('Customer not found')
-
-    const result = await getOrdersByCustomer(customer.id)
-    orders.value = result
-  } catch (err: any) {
-    error.value = err.message || 'Gagal mengambil pesanan.'
-  } finally {
-    loading.value = false
-  }
-})
 </script>
 
 <template>
   <div class="max-w-5xl mx-auto px-4 py-10">
-    <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">🧾 My Orders</h1>
+    <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center flex items-center justify-center gap-2">
+      <FileText class="w-6 h-6" />
+      My Orders
+    </h1>
 
     <div v-if="loading" class="text-center text-gray-500">Loading your orders...</div>
-    <div v-else-if="error" class="text-center text-red-500">{{ error }}</div>
-    <div v-else-if="orders.length === 0" class="text-center text-gray-400">You have no orders yet.</div>
+    <div v-else-if="error" class="text-center text-red-500">{{ error.message || error }}</div>
+    <div v-else-if="orders?.length === 0" class="text-center text-gray-400">You have no orders yet.</div>
 
     <div v-else class="space-y-6">
       <div
@@ -181,7 +179,10 @@ onMounted(async () => {
 
           <!-- Payment Details -->
           <div class="mt-4">
-            <h3 class="font-semibold text-gray-800 mb-2">💳 Payment Info</h3>
+            <h3 class="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+              <CreditCard class="w-5 h-5" />
+              Payment Info
+            </h3>
             <div v-if="paymentLoading[order.id]" class="text-gray-500">Loading payment details...</div>
             <div v-else-if="paymentError[order.id]" class="text-red-500">{{ paymentError[order.id] }}</div>
             <div v-else-if="paymentDetails[order.id]">

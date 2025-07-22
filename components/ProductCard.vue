@@ -1,14 +1,33 @@
 <script setup lang="ts">
-import { CircleDollarSign, ShoppingCart } from 'lucide-vue-next'
+import { ref } from 'vue'
+import { CircleDollarSign } from 'lucide-vue-next'
 import type { Product } from '~/types/Product'
+import { useCart } from '~/composables/useCart'
+import { useToast } from '~/composables/useToast'
 
-defineProps<{
+const props = defineProps<{
   product: Product
   categoryName: string
-  isLoading?: boolean
 }>()
 
-defineEmits(['addToCart'])
+const isLoading = ref(false)
+const { addToCart } = useCart()
+const { addToast } = useToast()
+
+const handleAddToCart = async () => {
+  if (isLoading.value || props.product.stock <= 0) return
+
+  isLoading.value = true
+  try {
+    await addToCart(props.product.id, 1)
+    addToast('Added to cart!', 'success')
+  } catch (error) {
+    console.error('Failed to add to cart:', error)
+    addToast('Failed to add to cart.', 'error')
+  } finally {
+    isLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -38,7 +57,7 @@ defineEmits(['addToCart'])
     <div class="px-5 pb-5">
       <button
         :disabled="product.stock <= 0 || isLoading"
-        @click.stop="$emit('addToCart', product.id)"
+        @click.stop="handleAddToCart"
         class="mt-2 w-full bg-blue-600 text-white py-2 rounded-full hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed flex justify-center items-center gap-2"
       >
         <template v-if="isLoading">

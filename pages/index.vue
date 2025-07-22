@@ -3,7 +3,6 @@ import { ref, onMounted, computed } from 'vue'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { useProducts } from '~/composables/useProducts'
 import { useCategories } from '~/composables/useCategories'
-import { useCart } from '~/composables/useCart'
 import type { Product } from '~/types/Product'
 import type { Category } from '~/types/Category'
 import { Package } from 'lucide-vue-next'
@@ -13,7 +12,6 @@ import ProductCard from '~/components/ProductCard.vue'
 
 const { getProducts } = useProducts()
 const { getCategories } = useCategories()
-const { addToCart } = useCart()
 
 const { data: products, pending: loading, refresh } = await useAsyncData<Product[]>('products', () => getProducts())
 const { data: categories, pending: loadingCategories } = await useAsyncData<Category[]>('categories', () => getCategories())
@@ -28,9 +26,7 @@ const categoryMap = computed(() => {
 
 const isLoggedIn = ref(false)
 const isAuthReady = ref(false)
-const { addToast } = useToast()
 const selectedCategoryId = ref<string | null>(null)
-const loadingProductIds = ref<Set<string>>(new Set())
 
 const filteredProducts = computed(() => {
   if (!selectedCategoryId.value) return products.value || []
@@ -39,27 +35,6 @@ const filteredProducts = computed(() => {
 
 const selectCategory = (categoryId: string | null) => {
   selectedCategoryId.value = categoryId
-}
-
-const handleAddToCart = async (productId: string) => {
-  if (!isLoggedIn.value || !isAuthReady.value) {
-    addToast('You must be logged in to add items to cart.', 'error')
-    return
-  }
-
-  if (loadingProductIds.value.has(productId)) return
-
-  loadingProductIds.value.add(productId)
-
-  try {
-    await addToCart(productId, 1)
-    addToast('Added to cart!', 'success')
-  } catch (error) {
-    console.error('Failed to add to cart:', error)
-    addToast('Failed to add to cart.', 'error')
-  } finally {
-    loadingProductIds.value.delete(productId)
-  }
 }
 
 onMounted(() => {
@@ -106,8 +81,6 @@ onMounted(() => {
           :key="product.id"
           :product="product"
           :categoryName="categoryMap[product.categoryId] || 'Uncategorized'"
-          :isLoading="loadingProductIds.has(product.id)"
-          @addToCart="handleAddToCart"
         />
       </div>
     </section>
