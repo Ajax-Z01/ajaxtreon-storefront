@@ -1,6 +1,6 @@
 import { useNuxtApp } from '#app'
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, type AuthError, type User } from 'firebase/auth'
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 
 export const useAuth = () => {
   const { $auth } = useNuxtApp()
@@ -12,7 +12,8 @@ export const useAuth = () => {
   const currentUser = useState<User | null>('currentUser', () => null)
   const authReady = useState<boolean>('authReady', () => false)
 
-  // Inisialisasi Auth
+  let refreshInterval: ReturnType<typeof setInterval> | null = null
+
   const initAuth = () => {
     return new Promise<void>((resolve) => {
       onAuthStateChanged($auth, async (user) => {
@@ -24,10 +25,25 @@ export const useAuth = () => {
           if (process.client) {
             localStorage.setItem('userToken', token.value)
           }
+
+          if (refreshInterval) clearInterval(refreshInterval)
+          refreshInterval = setInterval(async () => {
+            if (currentUser.value) {
+              const freshToken = await currentUser.value.getIdToken(true)
+              token.value = freshToken
+              if (process.client) {
+                localStorage.setItem('userToken', freshToken)
+              }
+            }
+          }, 15 * 60 * 1000) // 15 minutes
         } else {
           token.value = null
           if (process.client) {
             localStorage.removeItem('userToken')
+          }
+          if (refreshInterval) {
+            clearInterval(refreshInterval)
+            refreshInterval = null
           }
         }
 
@@ -36,7 +52,13 @@ export const useAuth = () => {
     })
   }
 
-  // Login
+  onUnmounted(() => {
+    if (refreshInterval) {
+      clearInterval(refreshInterval)
+      refreshInterval = null
+    }
+  })
+
   const login = async (email: string, password: string) => {
     loading.value = true
     error.value = null
@@ -61,7 +83,6 @@ export const useAuth = () => {
     }
   }
 
-  // Logout
   const logout = async () => {
     loading.value = true
     error.value = null
@@ -72,6 +93,10 @@ export const useAuth = () => {
       token.value = null
       if (process.client) {
         localStorage.removeItem('userToken')
+      }
+      if (refreshInterval) {
+        clearInterval(refreshInterval)
+        refreshInterval = null
       }
     } catch (err) {
       const authError = err as AuthError
