@@ -7,6 +7,7 @@ import { useCart } from '~/composables/useCart'
 import type { Product } from '~/types/Product'
 import type { Category } from '~/types/Category'
 import ProductCard from '~/components/ProductCard.vue'
+import { ShoppingBag, Search } from 'lucide-vue-next'
 
 const { getProducts } = useProducts()
 const { getCategories } = useCategories()
@@ -75,16 +76,22 @@ const isProductLoading = (id: string) => loadingProductIds.value.has(id)
 <template>
   <div class="min-h-screen bg-white">
     <section class="max-w-7xl mx-auto py-16 px-6">
-      <h1 class="text-4xl font-bold text-gray-800 mb-10 text-center">🛍️ All Products</h1>
+      <h1 class="text-4xl font-bold text-gray-800 mb-10 text-center flex items-center justify-center gap-2">
+        <ShoppingBag class="w-6 h-6" />
+        All Products
+      </h1>
 
       <!-- Search -->
       <div class="max-w-md mx-auto mb-8">
-        <input
-          v-model="searchTerm"
-          type="text"
-          placeholder="🔍 Search products by name..."
-          class="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <div class="relative">
+          <Search class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            v-model="searchTerm"
+            type="text"
+            placeholder="Search products by name..."
+            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
       </div>
 
       <!-- Loading State -->
