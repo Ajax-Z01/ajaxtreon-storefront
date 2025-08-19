@@ -1,6 +1,6 @@
 import type { MidtransCustomerDetails } from './Payment'
 
-export type OrderStatus = 'pending' | 'completed' | 'cancelled' | 'refunded' | 'failed' | 'processing' | 'on_hold' | 'paid';
+export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'cancelled' | 'completed' | 'refunded' | 'expired' | 'failed' | 'declined' | 'processing'
 
 export interface OrderItem {
   productId: string;
@@ -9,6 +9,8 @@ export interface OrderItem {
   unitPrice: number;
   discount?: number;
   tax?: number;
+  sellerId: string;
+  status?: OrderStatus;
 }
 
 export interface Order {
@@ -21,6 +23,8 @@ export interface Order {
   deletedAt?: string | null;
 
   items: OrderItem[];
+  
+  sellerIds: string[];
 
   totalAmount: number;
   discount?: number;

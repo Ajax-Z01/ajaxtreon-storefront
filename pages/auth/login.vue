@@ -13,8 +13,7 @@ const handleLogin = async () => {
   try {
     await login(email.value, password.value);
     if (!error.value) {
-      console.log('Logged in');
-      router.push('/');
+      window.location.href = '/';
     } else {
       console.error('Login failed:', error.value);
       alert('Login failed: ' + error.value);
@@ -24,6 +23,7 @@ const handleLogin = async () => {
     alert('Unexpected error: ' + (e instanceof Error ? e.message : String(e)));
   }
 };
+
 
 </script>
 
